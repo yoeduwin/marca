@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marca de Agua PDF - Ejecutiva Ambiental</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);
+      min-height:100vh;padding:20px;
+    }
+    .container{
+      max-width: 960px;margin:0 auto;background:white;border-radius:20px;
+      box-shadow:0 20px 60px rgba(0,0,0,.10);overflow:hidden;
+    }
+    .header{
+      background: linear-gradient(135deg,#005600,#0a7a2c);
+      color:white;padding:28px;text-align:center;
+    }
+    .header h1{font-size:1.6rem;font-weight:700;margin-bottom:6px}
+    .header p{opacity:.92}
+    .main{padding:32px}
+    .drop-zone{
+      border:3px dashed #005600;border-radius:16px;padding:40px 20px;text-align:center;
+      background: linear-gradient(45deg,#f8fff8,#f0f8f0);
+    }
+    .btn{
+      border:none;border-radius:999px;padding:12px 24px;font-weight:700;cursor:pointer;
+      color:white;background:linear-gradient(135deg,#005600,#0a7a2c);
+      box-shadow:0 8px 24px rgba(0,86,0,.30);transition:all .25s ease;
+      display:inline-block;text-decoration:none;margin-top:14px
+    }
+    .btn:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,86,0,.35)}
+    .processing,.result{display:none;text-align:center;padding:28px}
+    .spinner{width:54px;height:54px;border:4px solid #e0e0e0;border-top:4px solid #005600;border-radius:50%;
+      animation:spin 1s linear infinite;margin:0 auto 16px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .success{width:80px;height:80px;background:linear-gradient(135deg,#00c851,#00a043);
+      border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;
+      box-shadow:0 10px 30px rgba(0,200,81,.30)}
+    .success svg{width:40px;height:40px;fill:white}
+    .file-input{display:none}
+    .note{color:#555;margin-top:10px;font-size:0.9rem}
+    .config-panel{
+      background:#f8f9fa;border-radius:12px;padding:20px;margin-bottom:20px;
+    }
+    .config-panel h3{color:#005600;margin-bottom:16px;font-size:1.1rem}
+    .input-group{margin-bottom:14px}
+    .input-group label{display:block;color:#333;font-weight:600;margin-bottom:6px;font-size:0.9rem}
+    .input-group input,.input-group select{width:100%;padding:10px;border:2px solid #ddd;
+      border-radius:8px;font-size:0.95rem;transition:border .2s}
+    .input-group input:focus,.input-group select:focus{outline:none;border-color:#005600}
+    .checkbox-group{display:flex;align-items:center;gap:8px}
+    .checkbox-group input{width:auto}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .info-box{background:#e8f5e9;border-left:4px solid #005600;padding:12px;margin-bottom:16px;border-radius:6px}
+    .info-box p{font-size:0.85rem;color:#2e7d32;line-height:1.5}
+    .hidden{display:none !important}
+
+    /* Mode selector */
+    .mode-selector{display:flex;gap:12px;margin-bottom:20px}
+    .mode-btn{
+      flex:1;padding:16px;border:2px solid #ddd;border-radius:12px;
+      background:#f8f9fa;cursor:pointer;text-align:center;transition:all .25s ease;
+    }
+    .mode-btn:hover{border-color:#aaa;background:#f0f0f0}
+    .mode-btn.active{
+      border-color:#005600;background:#e8f5e9;
+      box-shadow:0 4px 12px rgba(0,86,0,.15);
+    }
+    .mode-btn h4{color:#333;margin-bottom:4px;font-size:1rem}
+    .mode-btn.active h4{color:#005600}
+    .mode-btn p{font-size:0.8rem;color:#666;margin:0}
+
+    /* Radio group for text option */
+    .radio-group{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap}
+    .radio-group label{font-weight:400;display:flex;align-items:center;gap:6px;font-size:0.9rem;cursor:pointer}
+    .radio-group input[type="radio"]{width:auto;margin:0}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Marca de Agua PDF</h1>
+    <p>Sistema de proteccion y certificacion de documentos</p>
+  </div>
+
+  <div class="main">
+    <section id="upload">
+
+      <!-- Mode Selector -->
+      <div class="mode-selector">
+        <div id="modeFinal" class="mode-btn active" onclick="setMode('final')">
+          <h4>Informe Final</h4>
+          <p>Certificacion + marca de agua en todas las paginas + QR</p>
+        </div>
+        <div id="modeMarca" class="mode-btn" onclick="setMode('marca')">
+          <h4>Solo Marca de Agua</h4>
+          <p>Marca de agua con rango de paginas, sin certificacion</p>
+        </div>
+      </div>
+
+      <!-- Info box (Mode 1 only) -->
+      <div id="infoBoxFinal" class="info-box">
+        <p><strong>Funcionalidades:</strong> Este sistema agrega automaticamente una pagina de certificacion (pagina 2) con conteo de paginas, fecha, QR de verificacion y marca de agua diagonal en todo el documento.</p>
+      </div>
+
+      <div class="config-panel">
+        <h3>Configuracion</h3>
+
+        <!-- Report Number -->
+        <div id="panelReportNumber" class="input-group">
+          <label>Numero de informe:</label>
+          <input type="text" id="reportNumber" placeholder="Ej: EA2601-036-0012" />
+        </div>
+
+        <!-- Text option selector -->
+        <div class="input-group">
+          <label>Texto de la marca de agua:</label>
+          <div class="radio-group">
+            <label><input type="radio" name="textOption" value="predefined" checked onchange="updateTextOptionVisibility()"> Predefinido (INFORME EJECUTIVA AMBIENTAL + No. informe)</label>
+            <label><input type="radio" name="textOption" value="custom" onchange="updateTextOptionVisibility()"> Personalizado</label>
+          </div>
+        </div>
+
+        <!-- Custom text fields -->
+        <div id="panelCustomText" class="grid-2 hidden">
+          <div class="input-group">
+            <label>Texto linea 1:</label>
+            <input type="text" id="customText1" value="INFORME PRELIMINAR -" />
+          </div>
+          <div class="input-group">
+            <label>Texto linea 2:</label>
+            <input type="text" id="customText2" value="EJECUTIVA AMBIENTAL 2025" />
+          </div>
+        </div>
+
+        <!-- Page range (Mode 2 only) -->
+        <div id="panelPageRange" class="hidden">
+          <label style="display:block;color:#333;font-weight:600;margin-bottom:6px;font-size:0.9rem">Rango de paginas:</label>
+          <div class="grid-2">
+            <div class="input-group">
+              <label>Desde pagina:</label>
+              <input type="number" id="pageFrom" min="1" value="1" />
+            </div>
+            <div class="input-group">
+              <label>Hasta pagina:</label>
+              <input type="number" id="pageTo" min="1" value="" placeholder="Ultima" />
+            </div>
+          </div>
+          <p class="note" style="font-size:0.8rem;margin-top:4px">Deja "Hasta pagina" vacio para aplicar hasta la ultima pagina del documento.</p>
+        </div>
+
+        <!-- Density and Opacity -->
+        <div class="grid-2">
+          <div class="input-group">
+            <label>Densidad de marca de agua:</label>
+            <select id="density">
+              <option value="baja">Baja (estandar)</option>
+              <option value="media" selected>Media (recomendada)</option>
+              <option value="alta">Alta (maxima proteccion)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Opacidad:</label>
+            <select id="opacity">
+              <option value="0.15">Muy sutil (15%)</option>
+              <option value="0.20">Equilibrada (20%)</option>
+              <option value="0.25" selected>Visible (25%)</option>
+              <option value="0.30">Notable (30%)</option>
+              <option value="0.35">Alta (35%)</option>
+              <option value="0.45">Muy visible (45%)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Checkboxes (Mode 2 only) -->
+        <div id="panelCheckboxes" class="hidden">
+          <div class="input-group checkbox-group">
+            <input type="checkbox" id="addTimestamp" checked />
+            <label for="addTimestamp">Incluir fecha y hora automatica</label>
+          </div>
+          <div class="input-group checkbox-group">
+            <input type="checkbox" id="multiLayer" checked />
+            <label for="multiLayer">Activar multiples capas de proteccion</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drop zone -->
+      <div id="dropZone" class="drop-zone">
+        <p>Arrastra tu PDF aqui o</p>
+        <button class="btn" onclick="document.getElementById('fileInput').click()">Seleccionar PDF</button>
+        <input id="fileInput" class="file-input" type="file" accept=".pdf" />
+        <p id="dropNote" class="note">Se insertara una pagina de certificacion en la posicion 2 del documento.</p>
+      </div>
+    </section>
+
+    <section id="processing" class="processing">
+      <div class="spinner"></div>
+      <h3 style="color:#005600;margin-bottom:6px;">Procesando documento...</h3>
+      <p class="note">Aplicando marcas de agua al documento</p>
+    </section>
+
+    <section id="result" class="result">
+      <div class="success">
+        <svg viewBox="0 0 24 24"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+      </div>
+      <h3 style="color:#00c851;margin-bottom:10px;">Documento procesado correctamente</h3>
+      <a id="downloadLink" class="btn" style="text-decoration:none">Descargar PDF</a>
+      <button class="btn" style="background:linear-gradient(135deg,#777,#999)" onclick="resetTool()">Procesar otro archivo</button>
+    </section>
+
+    <section id="error" style="display:none;text-align:center">
+      <div style="color:#dc3545;background:#f8d7da;border:1px solid #f5c6cb;border-radius:12px;padding:18px">
+        <h4>Error al procesar el archivo</h4>
+        <p id="errorMsg">Hubo un problema. Intenta con otro PDF.</p>
+      </div>
+      <button class="btn" style="background:linear-gradient(135deg,#777,#999)" onclick="resetTool()">Intentar de nuevo</button>
+    </section>
+  </div>
+</div>
+
+<script>
+  // =========================================================================
+  // DOM REFERENCES
+  // =========================================================================
+  const fileInput = document.getElementById('fileInput');
+  const secUpload = document.getElementById('upload');
+  const secProc = document.getElementById('processing');
+  const secRes = document.getElementById('result');
+  const secErr = document.getElementById('error');
+  const downloadLink = document.getElementById('downloadLink');
+
+  let currentMode = 'final';
+
+  // =========================================================================
+  // MODE TOGGLE & UI VISIBILITY
+  // =========================================================================
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('modeFinal').classList.toggle('active', mode === 'final');
+    document.getElementById('modeMarca').classList.toggle('active', mode === 'marca');
+
+    toggle('infoBoxFinal', mode === 'final');
+    toggle('panelPageRange', mode === 'marca');
+    toggle('panelCheckboxes', mode === 'marca');
+
+    updateTextOptionVisibility();
+
+    document.getElementById('dropNote').textContent = mode === 'final'
+      ? 'Se insertara una pagina de certificacion en la posicion 2 del documento.'
+      : 'Se aplicara marca de agua en las paginas seleccionadas.';
+  }
+
+  function toggle(id, show) {
+    document.getElementById(id).classList.toggle('hidden', !show);
+  }
+
+  function updateTextOptionVisibility() {
+    const textOption = document.querySelector('input[name="textOption"]:checked').value;
+    const isPredefined = textOption === 'predefined';
+
+    toggle('panelCustomText', !isPredefined);
+
+    if (currentMode === 'final') {
+      toggle('panelReportNumber', true);
+    } else {
+      toggle('panelReportNumber', isPredefined);
+    }
+  }
+
+  // =========================================================================
+  // SHARED UTILITY FUNCTIONS
+  // =========================================================================
+  async function loadMontserratFont() {
+    const url = 'https://fonts.gstatic.com/s/montserrat/v25/JTUSjIg1_i6t8kCHKm459Wlhzg.ttf';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('No se pudo descargar Montserrat');
+    return await res.arrayBuffer();
+  }
+
+  function generateQRCode(text, size) {
+    size = size || 150;
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    const moduleCount = qr.getModuleCount();
+    const cellSize = size / moduleCount;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000000';
+    for (let row = 0; row < moduleCount; row++) {
+      for (let col = 0; col < moduleCount; col++) {
+        if (qr.isDark(row, col)) {
+          ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+    return canvas.toDataURL('image/png');
+  }
+
+  function getDensityConfig(density) {
+    if (density === 'baja') return { stepDiagonal: 200, stepAlongLine: 250 };
+    if (density === 'media') return { stepDiagonal: 140, stepAlongLine: 180 };
+    return { stepDiagonal: 100, stepAlongLine: 130 };
+  }
+
+  function showError(msg) {
+    secProc.style.display = 'none'; secUpload.style.display = 'none';
+    secRes.style.display = 'none'; secErr.style.display = 'block';
+    document.getElementById('errorMsg').textContent = msg;
+  }
+
+  function resetTool() {
+    secUpload.style.display = 'block'; secProc.style.display = 'none';
+    secRes.style.display = 'none'; secErr.style.display = 'none';
+    fileInput.value = '';
+    if (downloadLink?.href?.startsWith('blob:')) URL.revokeObjectURL(downloadLink.href);
+  }
+
+  // =========================================================================
+  // WATERMARK ENGINE
+  // =========================================================================
+  function drawLayer(page, p) {
+    const { text1, text2, font, color, size, lineGap, radians, rotation,
+            diagonal, width, height, spacing, alongSpacing, opacity, offsetD } = p;
+    for (let d = -diagonal; d < diagonal * 2; d += spacing) {
+      for (let pos = -diagonal; pos < diagonal * 2; pos += alongSpacing) {
+        const x = pos * Math.cos(radians) - (d + offsetD) * Math.sin(radians);
+        const y = pos * Math.sin(radians) + (d + offsetD) * Math.cos(radians);
+        if (x >= -100 && x <= width + 100 && y >= -100 && y <= height + 100) {
+          page.drawText(text1, {
+            x, y, size, font, color, opacity, rotate: PDFLib.degrees(rotation)
+          });
+          const ox = lineGap * Math.sin(radians);
+          const oy = -lineGap * Math.cos(radians);
+          page.drawText(text2, {
+            x: x + ox, y: y + oy, size, font, color, opacity, rotate: PDFLib.degrees(rotation)
+          });
+        }
+      }
+    }
+  }
+
+  function applyWatermark(page, opts) {
+    const { text1, text2, font, color, size, config, baseOpacity, layerMode, multiLayer } = opts;
+    const { width, height } = page.getSize();
+    const lineGap = size * 1.2;
+    const rotation = -45;
+    const radians = rotation * Math.PI / 180;
+    const diagonal = Math.sqrt(width * width + height * height);
+    const base = { text1, text2, font, color, size, lineGap, radians, rotation, diagonal, width, height };
+
+    if (layerMode === '3layer') {
+      // Capa 1: Visible
+      drawLayer(page, { ...base,
+        spacing: config.stepDiagonal * 2.5,
+        alongSpacing: config.stepAlongLine * 2,
+        opacity: baseOpacity,
+        offsetD: 0
+      });
+      // Capa 2: Semi-transparente
+      drawLayer(page, { ...base,
+        spacing: config.stepDiagonal * 1.8,
+        alongSpacing: config.stepAlongLine * 1.5,
+        opacity: baseOpacity * 0.3,
+        offsetD: (config.stepDiagonal * 1.8) / 2
+      });
+      // Capa 3: Casi invisible
+      drawLayer(page, { ...base,
+        spacing: config.stepDiagonal * 1.2,
+        alongSpacing: config.stepAlongLine * 1.2,
+        opacity: 0.03,
+        offsetD: 0
+      });
+
+    } else if (layerMode === 'cert') {
+      // Capa ligera para pagina de certificacion
+      drawLayer(page, { ...base,
+        spacing: config.stepDiagonal * 3,
+        alongSpacing: config.stepAlongLine * 2.5,
+        opacity: baseOpacity * 0.6,
+        offsetD: 0
+      });
+
+    } else if (layerMode === 'simple') {
+      // Modo simple: 1 o 2 capas segun checkbox
+      const layers = multiLayer ? 2 : 1;
+      for (let layer = 0; layer < layers; layer++) {
+        drawLayer(page, { ...base,
+          spacing: config.stepDiagonal,
+          alongSpacing: config.stepAlongLine,
+          opacity: layer === 0 ? baseOpacity : baseOpacity * 0.7,
+          offsetD: layer * (config.stepDiagonal / 2)
+        });
+      }
+    }
+  }
+
+  // =========================================================================
+  // CERTIFICATION PAGE BUILDER
+  // =========================================================================
+  async function buildCertificationPage(certPage, pdfDoc, opts) {
+    const { font, fontBold, reportNumber, totalPages } = opts;
+    const { width: pgWidth, height: pgHeight } = certPage.getSize();
+
+    // Doble borde elegante
+    certPage.drawRectangle({
+      x: 35, y: 35, width: pgWidth - 70, height: pgHeight - 70,
+      borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 3
+    });
+    certPage.drawRectangle({
+      x: 45, y: 45, width: pgWidth - 90, height: pgHeight - 90,
+      borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 1
+    });
+
+    // Encabezado
+    certPage.drawText('EJECUTIVA AMBIENTAL', {
+      x: pgWidth / 2 - 130, y: pgHeight - 80, size: 16,
+      font: fontBold, color: PDFLib.rgb(0, 56/255, 0)
+    });
+    certPage.drawText('Seguridad e higiene', {
+      x: pgWidth / 2 - 85, y: pgHeight - 100, size: 10,
+      font: font, color: PDFLib.rgb(0.3, 0.3, 0.3)
+    });
+
+    // Linea decorativa superior
+    certPage.drawLine({
+      start: { x: 70, y: pgHeight - 120 },
+      end: { x: pgWidth - 70, y: pgHeight - 120 },
+      thickness: 2, color: PDFLib.rgb(0, 56/255, 0)
+    });
+
+    // Titulo principal
+    certPage.drawText('CERTIFICACION DE AUTENTICIDAD E INTEGRIDAD', {
+      x: pgWidth / 2 - 220, y: pgHeight - 160, size: 16,
+      font: fontBold, color: PDFLib.rgb(0, 0, 0)
+    });
+
+    // Texto de certificacion
+    let yPos = pgHeight - 200;
+    certPage.drawText('El presente documento fue realizado, emitido y autorizado exclusivamente por Ejecutiva Ambiental', {
+      x: 70, y: yPos, size: 11, font: font,
+      color: PDFLib.rgb(0.15, 0.15, 0.15)
+    });
+
+    yPos -= 27;
+    certPage.drawText('Este documento goza de presuncion de integridad unicamente en su totalidad, al contar con', {
+      x: 70, y: yPos, size: 10, font: font,
+      color: PDFLib.rgb(0.2, 0.2, 0.2)
+    });
+    yPos -= 15;
+    certPage.drawText(totalPages + ' paginas numeradas y protegidas mediante marca de agua digital. Cualquier alteracion,', {
+      x: 70, y: yPos, size: 10, font: font,
+      color: PDFLib.rgb(0.2, 0.2, 0.2)
+    });
+    yPos -= 15;
+    certPage.drawText('sustraccion o adicion de paginas invalida la autenticidad del documento completo.', {
+      x: 70, y: yPos, size: 10, font: font,
+      color: PDFLib.rgb(0.2, 0.2, 0.2)
+    });
+
+    // Caja de informacion del informe
+    yPos -= 20;
+    certPage.drawRectangle({
+      x: 65, y: yPos - 75, width: pgWidth - 130, height: 90,
+      color: PDFLib.rgb(0.97, 0.98, 0.97),
+      borderColor: PDFLib.rgb(0, 86/255, 0),
+      borderWidth: 1
+    });
+
+    certPage.drawText('INFORMACION DEL INFORME', {
+      x: 75, y: yPos - 20, size: 10, font: fontBold,
+      color: PDFLib.rgb(0, 86/255, 0)
+    });
+
+    certPage.drawText('Numero de Informe: ' + reportNumber, {
+      x: 75, y: yPos - 40, size: 10, font: font,
+      color: PDFLib.rgb(0.1, 0.1, 0.1)
+    });
+
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('es-ES', {
+      day: '2-digit', month: 'long', year: 'numeric'
+    });
+    certPage.drawText('Fecha de Emision: ' + dateStr, {
+      x: 75, y: yPos - 60, size: 10, font: font,
+      color: PDFLib.rgb(0.1, 0.1, 0.1)
+    });
+
+    certPage.drawText('Total de Paginas: ' + totalPages, {
+      x: pgWidth / 2 + 20, y: yPos - 60, size: 10, font: font,
+      color: PDFLib.rgb(0.1, 0.1, 0.1)
+    });
+
+    // Advertencia de seguridad
+    yPos -= 110;
+    certPage.drawText('ADVERTENCIA DE SEGURIDAD:', {
+      x: 70, y: yPos, size: 9, font: fontBold,
+      color: PDFLib.rgb(0.6, 0, 0)
+    });
+    yPos -= 15;
+    certPage.drawText('Este documento contiene multiples capas de proteccion digital, incluyendo marcas de', {
+      x: 70, y: yPos, size: 8, font: font,
+      color: PDFLib.rgb(0.4, 0.4, 0.4)
+    });
+    yPos -= 11;
+    certPage.drawText('agua visibles e invisibles. La reproduccion parcial o total sin autorizacion esta prohibida.', {
+      x: 70, y: yPos, size: 8, font: font,
+      color: PDFLib.rgb(0.4, 0.4, 0.4)
+    });
+
+    // Informacion de contacto
+    yPos -= 20;
+    certPage.drawText('INFORMACION DE CONTACTO', {
+      x: 70, y: yPos, size: 9, font: fontBold,
+      color: PDFLib.rgb(0, 86/255, 0)
+    });
+    yPos -= 18;
+    certPage.drawText('Telefono: 222 941 7295', {
+      x: 70, y: yPos, size: 9, font: font,
+      color: PDFLib.rgb(0.2, 0.2, 0.2)
+    });
+    yPos -= 15;
+    certPage.drawText('Web: www.ejecutivambiental.com', {
+      x: 70, y: yPos, size: 9, font: font,
+      color: PDFLib.rgb(0.2, 0.2, 0.2)
+    });
+
+    // QR Code
+    const qrDataUrl = generateQRCode('https://www.ejecutivambiental.com', 140);
+    const qrImageBytes = await fetch(qrDataUrl).then(function(res) { return res.arrayBuffer(); });
+    const qrImage = await pdfDoc.embedPng(qrImageBytes);
+
+    const qrSize = 140;
+    const qrX = pgWidth - 200;
+    const qrY = 120;
+
+    certPage.drawRectangle({
+      x: qrX - 5, y: qrY - 5, width: qrSize + 10, height: qrSize + 10,
+      borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 2
+    });
+
+    certPage.drawImage(qrImage, {
+      x: qrX, y: qrY, width: qrSize, height: qrSize
+    });
+
+    certPage.drawText('Escanea para verificar', {
+      x: qrX + 15, y: qrY - 20, size: 9, font: fontBold,
+      color: PDFLib.rgb(0, 86/255, 0)
+    });
+    certPage.drawText('autenticidad del documento', {
+      x: qrX + 8, y: qrY - 33, size: 8, font: font,
+      color: PDFLib.rgb(0.4, 0.4, 0.4)
+    });
+
+    // Linea de firma
+    const signY = 85;
+    certPage.drawText('_____________________________________________________', {
+      x: 70, y: signY, size: 10, font: font,
+      color: PDFLib.rgb(0.6, 0.6, 0.6)
+    });
+    certPage.drawText('SOLUCION EN INGENIERIA EJECUTIVA AMBIENTAL, S.A. DE C.V.', {
+      x: 70, y: signY - 20, size: 9, font: fontBold,
+      color: PDFLib.rgb(0, 86/255, 0)
+    });
+
+    // Pie de pagina
+    certPage.drawLine({
+      start: { x: 70, y: 50 },
+      end: { x: pgWidth - 70, y: 50 },
+      thickness: 1, color: PDFLib.rgb(0.8, 0.8, 0.8)
+    });
+    certPage.drawText('Documento generado digitalmente - ' + dateStr, {
+      x: pgWidth / 2 - 145, y: 32, size: 7, font: font,
+      color: PDFLib.rgb(0.5, 0.5, 0.5)
+    });
+  }
+
+  // =========================================================================
+  // MAIN PROCESS FUNCTION
+  // =========================================================================
+  async function processPDF(file) {
+    // Validaciones
+    const textOption = document.querySelector('input[name="textOption"]:checked').value;
+    const reportNumber = document.getElementById('reportNumber').value.trim();
+
+    if (currentMode === 'final' && !reportNumber) {
+      showError('Por favor ingresa el numero de informe.');
+      return;
+    }
+    if (textOption === 'predefined' && !reportNumber) {
+      showError('Por favor ingresa el numero de informe para el texto predefinido.');
+      return;
+    }
+
+    try {
+      secUpload.style.display = 'none'; secErr.style.display = 'none';
+      secRes.style.display = 'none'; secProc.style.display = 'block';
+
+      const bytes = await file.arrayBuffer();
+      const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+
+      // Cargar fuente
+      let font, fontBold;
+      try {
+        const mont = await loadMontserratFont();
+        font = await pdfDoc.embedFont(mont, { subset: true });
+        fontBold = font;
+      } catch (_) {
+        font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+        fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+      }
+
+      // Resolver textos de marca de agua
+      const currentYear = new Date().getFullYear();
+      let text1, text2;
+
+      if (textOption === 'predefined') {
+        text1 = 'INFORME EJECUTIVA AMBIENTAL ' + currentYear;
+        text2 = reportNumber;
+      } else {
+        text1 = document.getElementById('customText1').value || 'MARCA DE AGUA';
+        text2 = document.getElementById('customText2').value || 'EJECUTIVA AMBIENTAL';
+      }
+
+      // Modo 2: agregar timestamp si esta activo
+      if (currentMode === 'marca') {
+        const addTimestamp = document.getElementById('addTimestamp').checked;
+        if (addTimestamp) {
+          const now = new Date();
+          const ts = now.toLocaleString('es-ES', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          });
+          text2 = text2 + ' | ' + ts;
+        }
+      }
+
+      // Configuracion comun
+      const density = document.getElementById('density').value;
+      const baseOpacity = parseFloat(document.getElementById('opacity').value);
+      const config = getDensityConfig(density);
+      const color = PDFLib.rgb(0, 86/255, 0);
+      const size = 15;
+
+      const wmBase = { text1, text2, font, color, size, config, baseOpacity };
+
+      if (currentMode === 'final') {
+        // ===== MODO 1: INFORME FINAL =====
+
+        // Paso 1: Aplicar marca de agua 3-capas a todas las paginas existentes
+        const pages = pdfDoc.getPages();
+        for (const page of pages) {
+          applyWatermark(page, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+        }
+
+        // Paso 2: Insertar pagina de certificacion en posicion 2
+        const totalPages = pages.length + 1;
+        const certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
+
+        await buildCertificationPage(certPage, pdfDoc, {
+          font, fontBold, reportNumber, totalPages
+        });
+
+        // Paso 3: Aplicar misma marca de agua (3 capas) a la pagina de certificacion
+        applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+
+        // Metadata
+        pdfDoc.setTitle('Informe Final ' + reportNumber);
+        pdfDoc.setAuthor('Ejecutiva Ambiental');
+        pdfDoc.setSubject('Informe certificado - ' + reportNumber);
+        pdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
+        pdfDoc.setProducer('Sistema de Certificacion Digital SEA');
+        pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
+
+        downloadLink.download = file.name;
+        downloadLink.textContent = 'Descargar Informe Final';
+
+      } else {
+        // ===== MODO 2: SOLO MARCA DE AGUA =====
+
+        const multiLayer = document.getElementById('multiLayer').checked;
+        const pages = pdfDoc.getPages();
+        const totalPageCount = pages.length;
+
+        // Resolver rango de paginas
+        const fromVal = parseInt(document.getElementById('pageFrom').value) || 1;
+        const toVal = parseInt(document.getElementById('pageTo').value) || totalPageCount;
+        const pageFrom = Math.max(1, Math.min(fromVal, totalPageCount));
+        const pageTo = Math.max(pageFrom, Math.min(toVal, totalPageCount));
+
+        // Aplicar marca solo al rango seleccionado
+        for (let i = pageFrom - 1; i < pageTo; i++) {
+          applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: 'simple', multiLayer: multiLayer }));
+        }
+
+        // Metadata
+        pdfDoc.setTitle('Documento Protegido con Marca de Agua');
+        pdfDoc.setAuthor('Sistema de Proteccion SEA');
+        pdfDoc.setSubject('Documento con marca de agua de seguridad');
+        pdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
+        pdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
+        pdfDoc.setCreator('Herramienta de Proteccion Documental');
+
+        downloadLink.download = 'Preliminar - ' + file.name;
+        downloadLink.textContent = 'Descargar PDF con marca de agua';
+      }
+
+      // Fechas comunes
+      const creationDate = new Date();
+      pdfDoc.setCreationDate(creationDate);
+      pdfDoc.setModificationDate(creationDate);
+
+      // Guardar y ofrecer descarga
+      const out = await pdfDoc.save();
+      const blob = new Blob([out], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      downloadLink.href = url;
+
+      secProc.style.display = 'none'; secRes.style.display = 'block';
+
+    } catch (err) {
+      console.error('Error detallado:', err);
+      showError('Error al procesar: ' + (err.message || 'Error desconocido'));
+    }
+  }
+
+  // =========================================================================
+  // EVENT WIRING
+  // =========================================================================
+  document.getElementById('dropZone').addEventListener('dragover', function(e) { e.preventDefault(); });
+  document.getElementById('dropZone').addEventListener('drop', function(e) {
+    e.preventDefault();
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    if (f.type === 'application/pdf') { processPDF(f); } else { showError('Selecciona un archivo PDF valido.'); }
+  });
+  fileInput.addEventListener('change', function(e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    if (f.type === 'application/pdf') { processPDF(f); } else { showError('Selecciona un archivo PDF valido.'); }
+  });
+
+  // Initialize with Mode 1 active
+  setMode('final');
+</script>
+</body>
+</html>
