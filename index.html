@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Marca de Agua PDF - Ejecutiva Ambiental</title>
+  <title>SISTEMA DE PROTECCIÓN Y CERTIFICACIÓN EJECUTIVA - Ejecutiva Ambiental</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
@@ -86,7 +86,7 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>Marca de Agua PDF</h1>
+    <h1>SISTEMA DE PROTECCIÓN Y CERTIFICACIÓN EJECUTIVA</h1>
     <p>Sistema de proteccion y certificacion de documentos</p>
   </div>
 
@@ -96,11 +96,11 @@
       <!-- Mode Selector -->
       <div class="mode-selector">
         <div id="modeFinal" class="mode-btn active" onclick="setMode('final')">
-          <h4>Informe Final</h4>
+          <h4>Informe Final Digital</h4>
           <p>Certificacion + marca de agua en todas las paginas + QR</p>
         </div>
         <div id="modeMarca" class="mode-btn" onclick="setMode('marca')">
-          <h4>Solo Marca de Agua</h4>
+          <h4>Preliminar y para Anexos</h4>
           <p>Marca de agua con rango de paginas, sin certificacion</p>
         </div>
       </div>
@@ -657,7 +657,7 @@
       const wmBase = { text1, text2, font, color, size, config, baseOpacity };
 
       if (currentMode === 'final') {
-        // ===== MODO 1: INFORME FINAL =====
+        // ===== MODO 1: INFORME FINAL DIGITAL =====
 
         // Paso 1: Aplicar marca de agua 3-capas a todas las paginas existentes
         const pages = pdfDoc.getPages();
@@ -677,7 +677,7 @@
         applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
 
         // Metadata
-        pdfDoc.setTitle('Informe Final ' + reportNumber);
+        pdfDoc.setTitle('Informe Final Digital ' + reportNumber);
         pdfDoc.setAuthor('Ejecutiva Ambiental');
         pdfDoc.setSubject('Informe certificado - ' + reportNumber);
         pdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
@@ -685,10 +685,10 @@
         pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
 
         downloadLink.download = file.name;
-        downloadLink.textContent = 'Descargar Informe Final';
+        downloadLink.textContent = 'Descargar Informe Final Digital';
 
       } else {
-        // ===== MODO 2: SOLO MARCA DE AGUA =====
+        // ===== MODO 2: PRELIMINAR Y PARA ANEXOS =====
 
         const multiLayer = document.getElementById('multiLayer').checked;
         const pages = pdfDoc.getPages();
