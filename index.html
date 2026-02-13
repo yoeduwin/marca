@@ -6,6 +6,7 @@
   <title>SISTEMA DE PROTECCIÓN Y CERTIFICACIÓN EJECUTIVA - Ejecutiva Ambiental</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -189,6 +190,12 @@
             <input type="checkbox" id="multiLayer" checked />
             <label for="multiLayer">Activar multiples capas de proteccion</label>
           </div>
+        </div>
+
+        <!-- Aplanamiento (ambos modos) -->
+        <div class="input-group checkbox-group" style="margin-top:10px">
+          <input type="checkbox" id="flattenDoc" checked />
+          <label for="flattenDoc">Aplanar documento (proteccion maxima - fusiona marca de agua con contenido)</label>
         </div>
       </div>
 
@@ -405,6 +412,52 @@
         });
       }
     }
+  }
+
+  // =========================================================================
+  // FLATTEN ENGINE (RASTERIZACION ANTI-EDICION)
+  // =========================================================================
+  async function flattenPDF(pdfBytes, progressCallback) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+    const pdfJsDoc = await loadingTask.promise;
+    const flatDoc = await PDFLib.PDFDocument.create();
+
+    const scale = 3;   // 216 DPI — alta calidad para texto legible
+    const numPages = pdfJsDoc.numPages;
+
+    for (let i = 1; i <= numPages; i++) {
+      if (progressCallback) progressCallback(i, numPages);
+
+      const page = await pdfJsDoc.getPage(i);
+      const viewport = page.getViewport({ scale: scale });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+
+      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+      // Convertir a JPEG con alta calidad
+      const imgDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const imgBytes = await fetch(imgDataUrl).then(function(r) { return r.arrayBuffer(); });
+      const img = await flatDoc.embedJpg(imgBytes);
+
+      // Usar dimensiones originales de la pagina (puntos PDF a 72 DPI)
+      const origViewport = page.getViewport({ scale: 1 });
+      const newPage = flatDoc.addPage([origViewport.width, origViewport.height]);
+      newPage.drawImage(img, {
+        x: 0, y: 0,
+        width: origViewport.width,
+        height: origViewport.height
+      });
+    }
+
+    pdfJsDoc.destroy();
+    return flatDoc;
   }
 
   // =========================================================================
@@ -717,13 +770,44 @@
         downloadLink.textContent = 'Descargar PDF con marca de agua';
       }
 
+      // ===== APLANAMIENTO (PROTECCION ANTI-EDICION) =====
+      const shouldFlatten = document.getElementById('flattenDoc').checked;
+      let finalPdfDoc = pdfDoc;
+
+      if (shouldFlatten) {
+        document.querySelector('#processing .note').textContent =
+          'Aplanando documento (fusionando marca de agua con contenido)...';
+        const intermediateBytes = await pdfDoc.save();
+        finalPdfDoc = await flattenPDF(intermediateBytes, function(current, total) {
+          document.querySelector('#processing .note').textContent =
+            'Aplanando pagina ' + current + ' de ' + total + '...';
+        });
+
+        // Re-aplicar metadata al documento aplanado
+        if (currentMode === 'final') {
+          finalPdfDoc.setTitle('Informe Final Digital ' + reportNumber);
+          finalPdfDoc.setAuthor('Ejecutiva Ambiental');
+          finalPdfDoc.setSubject('Informe certificado - ' + reportNumber);
+          finalPdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
+          finalPdfDoc.setProducer('Sistema de Certificacion Digital SEA');
+          finalPdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
+        } else {
+          finalPdfDoc.setTitle('Documento Protegido con Marca de Agua');
+          finalPdfDoc.setAuthor('Sistema de Proteccion SEA');
+          finalPdfDoc.setSubject('Documento con marca de agua de seguridad');
+          finalPdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
+          finalPdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
+          finalPdfDoc.setCreator('Herramienta de Proteccion Documental');
+        }
+      }
+
       // Fechas comunes
       const creationDate = new Date();
-      pdfDoc.setCreationDate(creationDate);
-      pdfDoc.setModificationDate(creationDate);
+      finalPdfDoc.setCreationDate(creationDate);
+      finalPdfDoc.setModificationDate(creationDate);
 
       // Guardar y ofrecer descarga
-      const out = await pdfDoc.save();
+      const out = await finalPdfDoc.save();
       const blob = new Blob([out], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       downloadLink.href = url;
