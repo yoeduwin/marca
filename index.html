@@ -194,8 +194,26 @@
 
         <!-- Aplanamiento (ambos modos) -->
         <div class="input-group checkbox-group" style="margin-top:10px">
-          <input type="checkbox" id="flattenDoc" checked />
+          <input type="checkbox" id="flattenDoc" checked onchange="toggleFlattenOptions()" />
           <label for="flattenDoc">Aplanar documento (proteccion maxima - fusiona marca de agua con contenido)</label>
+        </div>
+        <div id="panelFlattenOptions" class="grid-2" style="margin-top:8px">
+          <div class="input-group">
+            <label>Resolucion de imagen:</label>
+            <select id="flattenScale">
+              <option value="2">Media (144 DPI - archivo ligero)</option>
+              <option value="2.5">Alta (180 DPI - equilibrado)</option>
+              <option value="3" selected>Muy alta (216 DPI - maxima nitidez)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Compresion JPEG:</label>
+            <select id="flattenQuality">
+              <option value="0.70">Alta compresion (70% - mas ligero)</option>
+              <option value="0.80">Compresion media (80% - equilibrado)</option>
+              <option value="0.92" selected>Baja compresion (92% - mejor calidad)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -219,6 +237,7 @@
         <svg viewBox="0 0 24 24"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
       </div>
       <h3 style="color:#00c851;margin-bottom:10px;">Documento procesado correctamente</h3>
+      <p id="fileSize" class="note" style="margin-bottom:10px"></p>
       <a id="downloadLink" class="btn" style="text-decoration:none">Descargar PDF</a>
       <button class="btn" style="background:linear-gradient(135deg,#777,#999)" onclick="resetTool()">Procesar otro archivo</button>
     </section>
@@ -280,6 +299,11 @@
     } else {
       toggle('panelReportNumber', isPredefined);
     }
+  }
+
+  function toggleFlattenOptions() {
+    const checked = document.getElementById('flattenDoc').checked;
+    toggle('panelFlattenOptions', checked);
   }
 
   // =========================================================================
@@ -417,7 +441,11 @@
   // =========================================================================
   // FLATTEN ENGINE (RASTERIZACION ANTI-EDICION)
   // =========================================================================
-  async function flattenPDF(pdfBytes, progressCallback) {
+  async function flattenPDF(pdfBytes, opts) {
+    var scale = (opts && opts.scale) || 3;
+    var quality = (opts && opts.quality) || 0.92;
+    var progressCallback = opts && opts.onProgress;
+
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -425,7 +453,6 @@
     const pdfJsDoc = await loadingTask.promise;
     const flatDoc = await PDFLib.PDFDocument.create();
 
-    const scale = 3;   // 216 DPI — alta calidad para texto legible
     const numPages = pdfJsDoc.numPages;
 
     for (let i = 1; i <= numPages; i++) {
@@ -441,8 +468,7 @@
 
       await page.render({ canvasContext: ctx, viewport: viewport }).promise;
 
-      // Convertir a JPEG con alta calidad
-      const imgDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const imgDataUrl = canvas.toDataURL('image/jpeg', quality);
       const imgBytes = await fetch(imgDataUrl).then(function(r) { return r.arrayBuffer(); });
       const img = await flatDoc.embedJpg(imgBytes);
 
@@ -778,9 +804,15 @@
         document.querySelector('#processing .note').textContent =
           'Aplanando documento (fusionando marca de agua con contenido)...';
         const intermediateBytes = await pdfDoc.save();
-        finalPdfDoc = await flattenPDF(intermediateBytes, function(current, total) {
-          document.querySelector('#processing .note').textContent =
-            'Aplanando pagina ' + current + ' de ' + total + '...';
+        const flatScale = parseFloat(document.getElementById('flattenScale').value);
+        const flatQuality = parseFloat(document.getElementById('flattenQuality').value);
+        finalPdfDoc = await flattenPDF(intermediateBytes, {
+          scale: flatScale,
+          quality: flatQuality,
+          onProgress: function(current, total) {
+            document.querySelector('#processing .note').textContent =
+              'Aplanando pagina ' + current + ' de ' + total + '...';
+          }
         });
 
         // Re-aplicar metadata al documento aplanado
@@ -811,6 +843,11 @@
       const blob = new Blob([out], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       downloadLink.href = url;
+
+      // Mostrar tamano del archivo
+      var sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+      document.getElementById('fileSize').textContent =
+        'Tamano del archivo: ' + sizeMB + ' MB';
 
       secProc.style.display = 'none'; secRes.style.display = 'block';
 
