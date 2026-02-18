@@ -82,6 +82,20 @@
     .radio-group{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap}
     .radio-group label{font-weight:400;display:flex;align-items:center;gap:6px;font-size:0.9rem;cursor:pointer}
     .radio-group input[type="radio"]{width:auto;margin:0}
+
+    /* File results list */
+    .file-result-item{
+      display:flex;align-items:center;justify-content:space-between;
+      background:#f8f9fa;border:1px solid #e0e0e0;border-radius:10px;
+      padding:12px 16px;margin-bottom:8px;gap:12px;text-align:left;
+    }
+    .file-result-item .file-info{flex:1;min-width:0}
+    .file-result-item .file-name{
+      font-weight:600;color:#333;font-size:0.9rem;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .file-result-item .file-size{font-size:0.8rem;color:#888;margin-top:2px}
+    .file-result-item .btn{margin-top:0;white-space:nowrap;font-size:0.85rem;padding:8px 18px}
   </style>
 </head>
 <body>
@@ -219,16 +233,16 @@
 
       <!-- Drop zone -->
       <div id="dropZone" class="drop-zone">
-        <p>Arrastra tu PDF aqui o</p>
-        <button class="btn" onclick="document.getElementById('fileInput').click()">Seleccionar PDF</button>
-        <input id="fileInput" class="file-input" type="file" accept=".pdf" />
+        <p>Arrastra tus PDFs aqui o</p>
+        <button class="btn" onclick="document.getElementById('fileInput').click()">Seleccionar PDFs</button>
+        <input id="fileInput" class="file-input" type="file" accept=".pdf" multiple />
         <p id="dropNote" class="note">Se insertara una pagina de certificacion en la posicion 2 del documento.</p>
       </div>
     </section>
 
     <section id="processing" class="processing">
       <div class="spinner"></div>
-      <h3 style="color:#005600;margin-bottom:6px;">Procesando documento...</h3>
+      <h3 id="processingTitle" style="color:#005600;margin-bottom:6px;">Procesando documentos...</h3>
       <p class="note">Aplicando marcas de agua al documento</p>
     </section>
 
@@ -236,10 +250,11 @@
       <div class="success">
         <svg viewBox="0 0 24 24"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
       </div>
-      <h3 style="color:#00c851;margin-bottom:10px;">Documento procesado correctamente</h3>
-      <p id="fileSize" class="note" style="margin-bottom:10px"></p>
-      <a id="downloadLink" class="btn" style="text-decoration:none">Descargar PDF</a>
-      <button class="btn" style="background:linear-gradient(135deg,#777,#999)" onclick="resetTool()">Procesar otro archivo</button>
+      <h3 style="color:#00c851;margin-bottom:10px;">Documentos procesados correctamente</h3>
+      <div id="resultsList"></div>
+      <div style="margin-top:18px">
+        <button class="btn" style="background:linear-gradient(135deg,#777,#999)" onclick="resetTool()">Procesar otros archivos</button>
+      </div>
     </section>
 
     <section id="error" style="display:none;text-align:center">
@@ -261,9 +276,9 @@
   const secProc = document.getElementById('processing');
   const secRes = document.getElementById('result');
   const secErr = document.getElementById('error');
-  const downloadLink = document.getElementById('downloadLink');
 
   let currentMode = 'final';
+  let blobURLs = [];
 
   // =========================================================================
   // MODE TOGGLE & UI VISIBILITY
@@ -356,7 +371,9 @@
     secUpload.style.display = 'block'; secProc.style.display = 'none';
     secRes.style.display = 'none'; secErr.style.display = 'none';
     fileInput.value = '';
-    if (downloadLink?.href?.startsWith('blob:')) URL.revokeObjectURL(downloadLink.href);
+    blobURLs.forEach(function(u) { URL.revokeObjectURL(u); });
+    blobURLs = [];
+    document.getElementById('resultsList').innerHTML = '';
   }
 
   // =========================================================================
@@ -667,9 +684,119 @@
   }
 
   // =========================================================================
-  // MAIN PROCESS FUNCTION
+  // PROCESS SINGLE PDF (returns result object)
   // =========================================================================
-  async function processPDF(file) {
+  async function processSinglePDF(file, opts) {
+    const { textOption, reportNumber, text1: baseText1, text2: baseText2,
+            density, baseOpacity, config, shouldFlatten, flatScale, flatQuality,
+            multiLayerChecked, pageFromVal, pageToVal } = opts;
+
+    const bytes = await file.arrayBuffer();
+    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+
+    // Cargar fuente
+    let font, fontBold;
+    try {
+      const mont = await loadMontserratFont();
+      font = await pdfDoc.embedFont(mont, { subset: true });
+      fontBold = font;
+    } catch (_) {
+      font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+      fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    }
+
+    const color = PDFLib.rgb(0, 86/255, 0);
+    const size = 15;
+    const wmBase = { text1: baseText1, text2: baseText2, font, color, size, config, baseOpacity };
+
+    let downloadName;
+
+    if (currentMode === 'final') {
+      const pages = pdfDoc.getPages();
+      for (const page of pages) {
+        applyWatermark(page, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+      }
+
+      const totalPages = pages.length + 1;
+      const certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
+      await buildCertificationPage(certPage, pdfDoc, { font, fontBold, reportNumber, totalPages });
+      applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+
+      pdfDoc.setTitle('Informe Final Digital ' + reportNumber);
+      pdfDoc.setAuthor('Ejecutiva Ambiental');
+      pdfDoc.setSubject('Informe certificado - ' + reportNumber);
+      pdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
+      pdfDoc.setProducer('Sistema de Certificacion Digital SEA');
+      pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
+      downloadName = file.name;
+
+    } else {
+      const pages = pdfDoc.getPages();
+      const totalPageCount = pages.length;
+      const pageFrom = Math.max(1, Math.min(pageFromVal, totalPageCount));
+      const pageTo = Math.max(pageFrom, Math.min(pageToVal || totalPageCount, totalPageCount));
+
+      for (let i = pageFrom - 1; i < pageTo; i++) {
+        applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: 'simple', multiLayer: multiLayerChecked }));
+      }
+
+      pdfDoc.setTitle('Documento Protegido con Marca de Agua');
+      pdfDoc.setAuthor('Sistema de Proteccion SEA');
+      pdfDoc.setSubject('Documento con marca de agua de seguridad');
+      pdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
+      pdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
+      pdfDoc.setCreator('Herramienta de Proteccion Documental');
+      downloadName = 'Preliminar - ' + file.name;
+    }
+
+    // Aplanamiento
+    let finalPdfDoc = pdfDoc;
+    if (shouldFlatten) {
+      document.querySelector('#processing .note').textContent =
+        'Aplanando "' + file.name + '"...';
+      const intermediateBytes = await pdfDoc.save();
+      finalPdfDoc = await flattenPDF(intermediateBytes, {
+        scale: flatScale,
+        quality: flatQuality,
+        onProgress: function(current, total) {
+          document.querySelector('#processing .note').textContent =
+            'Aplanando "' + file.name + '" - pagina ' + current + ' de ' + total + '...';
+        }
+      });
+
+      if (currentMode === 'final') {
+        finalPdfDoc.setTitle('Informe Final Digital ' + reportNumber);
+        finalPdfDoc.setAuthor('Ejecutiva Ambiental');
+        finalPdfDoc.setSubject('Informe certificado - ' + reportNumber);
+        finalPdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
+        finalPdfDoc.setProducer('Sistema de Certificacion Digital SEA');
+        finalPdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
+      } else {
+        finalPdfDoc.setTitle('Documento Protegido con Marca de Agua');
+        finalPdfDoc.setAuthor('Sistema de Proteccion SEA');
+        finalPdfDoc.setSubject('Documento con marca de agua de seguridad');
+        finalPdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
+        finalPdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
+        finalPdfDoc.setCreator('Herramienta de Proteccion Documental');
+      }
+    }
+
+    const creationDate = new Date();
+    finalPdfDoc.setCreationDate(creationDate);
+    finalPdfDoc.setModificationDate(creationDate);
+
+    const out = await finalPdfDoc.save();
+    const blob = new Blob([out], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    blobURLs.push(url);
+
+    return { downloadName, url, sizeMB: (blob.size / (1024 * 1024)).toFixed(2) };
+  }
+
+  // =========================================================================
+  // PROCESS MULTIPLE PDFs
+  // =========================================================================
+  async function processMultiplePDFs(files) {
     // Validaciones
     const textOption = document.querySelector('input[name="textOption"]:checked').value;
     const reportNumber = document.getElementById('reportNumber').value.trim();
@@ -687,24 +814,9 @@
       secUpload.style.display = 'none'; secErr.style.display = 'none';
       secRes.style.display = 'none'; secProc.style.display = 'block';
 
-      const bytes = await file.arrayBuffer();
-      const pdfDoc = await PDFLib.PDFDocument.load(bytes);
-
-      // Cargar fuente
-      let font, fontBold;
-      try {
-        const mont = await loadMontserratFont();
-        font = await pdfDoc.embedFont(mont, { subset: true });
-        fontBold = font;
-      } catch (_) {
-        font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-        fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-      }
-
       // Resolver textos de marca de agua
       const currentYear = new Date().getFullYear();
       let text1, text2;
-
       if (textOption === 'predefined') {
         text1 = 'INFORME EJECUTIVA AMBIENTAL ' + currentYear;
         text2 = reportNumber;
@@ -713,7 +825,6 @@
         text2 = document.getElementById('customText2').value || 'EJECUTIVA AMBIENTAL';
       }
 
-      // Modo 2: agregar timestamp si esta activo
       if (currentMode === 'marca') {
         const addTimestamp = document.getElementById('addTimestamp').checked;
         if (addTimestamp) {
@@ -726,128 +837,51 @@
         }
       }
 
-      // Configuracion comun
       const density = document.getElementById('density').value;
       const baseOpacity = parseFloat(document.getElementById('opacity').value);
       const config = getDensityConfig(density);
-      const color = PDFLib.rgb(0, 86/255, 0);
-      const size = 15;
-
-      const wmBase = { text1, text2, font, color, size, config, baseOpacity };
-
-      if (currentMode === 'final') {
-        // ===== MODO 1: INFORME FINAL DIGITAL =====
-
-        // Paso 1: Aplicar marca de agua 3-capas a todas las paginas existentes
-        const pages = pdfDoc.getPages();
-        for (const page of pages) {
-          applyWatermark(page, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
-        }
-
-        // Paso 2: Insertar pagina de certificacion en posicion 2
-        const totalPages = pages.length + 1;
-        const certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
-
-        await buildCertificationPage(certPage, pdfDoc, {
-          font, fontBold, reportNumber, totalPages
-        });
-
-        // Paso 3: Aplicar misma marca de agua (3 capas) a la pagina de certificacion
-        applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
-
-        // Metadata
-        pdfDoc.setTitle('Informe Final Digital ' + reportNumber);
-        pdfDoc.setAuthor('Ejecutiva Ambiental');
-        pdfDoc.setSubject('Informe certificado - ' + reportNumber);
-        pdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
-        pdfDoc.setProducer('Sistema de Certificacion Digital SEA');
-        pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-
-        downloadLink.download = file.name;
-        downloadLink.textContent = 'Descargar Informe Final Digital';
-
-      } else {
-        // ===== MODO 2: PRELIMINAR Y PARA ANEXOS =====
-
-        const multiLayer = document.getElementById('multiLayer').checked;
-        const pages = pdfDoc.getPages();
-        const totalPageCount = pages.length;
-
-        // Resolver rango de paginas
-        const fromVal = parseInt(document.getElementById('pageFrom').value) || 1;
-        const toVal = parseInt(document.getElementById('pageTo').value) || totalPageCount;
-        const pageFrom = Math.max(1, Math.min(fromVal, totalPageCount));
-        const pageTo = Math.max(pageFrom, Math.min(toVal, totalPageCount));
-
-        // Aplicar marca solo al rango seleccionado
-        for (let i = pageFrom - 1; i < pageTo; i++) {
-          applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: 'simple', multiLayer: multiLayer }));
-        }
-
-        // Metadata
-        pdfDoc.setTitle('Documento Protegido con Marca de Agua');
-        pdfDoc.setAuthor('Sistema de Proteccion SEA');
-        pdfDoc.setSubject('Documento con marca de agua de seguridad');
-        pdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
-        pdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
-        pdfDoc.setCreator('Herramienta de Proteccion Documental');
-
-        downloadLink.download = 'Preliminar - ' + file.name;
-        downloadLink.textContent = 'Descargar PDF con marca de agua';
-      }
-
-      // ===== APLANAMIENTO (PROTECCION ANTI-EDICION) =====
       const shouldFlatten = document.getElementById('flattenDoc').checked;
-      let finalPdfDoc = pdfDoc;
+      const flatScale = parseFloat(document.getElementById('flattenScale').value);
+      const flatQuality = parseFloat(document.getElementById('flattenQuality').value);
+      const multiLayerChecked = currentMode === 'marca' ? document.getElementById('multiLayer').checked : false;
+      const pageFromVal = parseInt(document.getElementById('pageFrom').value) || 1;
+      const pageToVal = parseInt(document.getElementById('pageTo').value) || 0;
 
-      if (shouldFlatten) {
-        document.querySelector('#processing .note').textContent =
-          'Aplanando documento (fusionando marca de agua con contenido)...';
-        const intermediateBytes = await pdfDoc.save();
-        const flatScale = parseFloat(document.getElementById('flattenScale').value);
-        const flatQuality = parseFloat(document.getElementById('flattenQuality').value);
-        finalPdfDoc = await flattenPDF(intermediateBytes, {
-          scale: flatScale,
-          quality: flatQuality,
-          onProgress: function(current, total) {
-            document.querySelector('#processing .note').textContent =
-              'Aplanando pagina ' + current + ' de ' + total + '...';
-          }
-        });
+      const opts = {
+        textOption, reportNumber, text1, text2: text2,
+        density, baseOpacity, config, shouldFlatten, flatScale, flatQuality,
+        multiLayerChecked, pageFromVal, pageToVal
+      };
 
-        // Re-aplicar metadata al documento aplanado
-        if (currentMode === 'final') {
-          finalPdfDoc.setTitle('Informe Final Digital ' + reportNumber);
-          finalPdfDoc.setAuthor('Ejecutiva Ambiental');
-          finalPdfDoc.setSubject('Informe certificado - ' + reportNumber);
-          finalPdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
-          finalPdfDoc.setProducer('Sistema de Certificacion Digital SEA');
-          finalPdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-        } else {
-          finalPdfDoc.setTitle('Documento Protegido con Marca de Agua');
-          finalPdfDoc.setAuthor('Sistema de Proteccion SEA');
-          finalPdfDoc.setSubject('Documento con marca de agua de seguridad');
-          finalPdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
-          finalPdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
-          finalPdfDoc.setCreator('Herramienta de Proteccion Documental');
-        }
+      const results = [];
+      const resultsList = document.getElementById('resultsList');
+      resultsList.innerHTML = '';
+
+      for (let i = 0; i < files.length; i++) {
+        var fileLabel = files.length > 1
+          ? 'Procesando documento ' + (i + 1) + ' de ' + files.length + ': ' + files[i].name
+          : 'Procesando documento: ' + files[i].name;
+        document.getElementById('processingTitle').textContent = fileLabel;
+        document.querySelector('#processing .note').textContent = 'Aplicando marcas de agua...';
+
+        var result = await processSinglePDF(files[i], opts);
+        results.push(result);
       }
 
-      // Fechas comunes
-      const creationDate = new Date();
-      finalPdfDoc.setCreationDate(creationDate);
-      finalPdfDoc.setModificationDate(creationDate);
-
-      // Guardar y ofrecer descarga
-      const out = await finalPdfDoc.save();
-      const blob = new Blob([out], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      downloadLink.href = url;
-
-      // Mostrar tamano del archivo
-      var sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
-      document.getElementById('fileSize').textContent =
-        'Tamano del archivo: ' + sizeMB + ' MB';
+      // Construir lista de resultados
+      for (let i = 0; i < results.length; i++) {
+        var item = document.createElement('div');
+        item.className = 'file-result-item';
+        item.innerHTML =
+          '<div class="file-info">' +
+            '<div class="file-name">' + results[i].downloadName + '</div>' +
+            '<div class="file-size">Tamano: ' + results[i].sizeMB + ' MB</div>' +
+          '</div>' +
+          '<a class="btn" href="' + results[i].url + '" download="' + results[i].downloadName + '" style="text-decoration:none">' +
+            'Descargar' +
+          '</a>';
+        resultsList.appendChild(item);
+      }
 
       secProc.style.display = 'none'; secRes.style.display = 'block';
 
@@ -863,14 +897,24 @@
   document.getElementById('dropZone').addEventListener('dragover', function(e) { e.preventDefault(); });
   document.getElementById('dropZone').addEventListener('drop', function(e) {
     e.preventDefault();
-    var f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (!f) return;
-    if (f.type === 'application/pdf') { processPDF(f); } else { showError('Selecciona un archivo PDF valido.'); }
+    var files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    var pdfFiles = [];
+    for (var i = 0; i < files.length; i++) {
+      if (files[i].type === 'application/pdf') pdfFiles.push(files[i]);
+    }
+    if (pdfFiles.length === 0) { showError('Selecciona archivos PDF validos.'); return; }
+    processMultiplePDFs(pdfFiles);
   });
   fileInput.addEventListener('change', function(e) {
-    var f = e.target.files && e.target.files[0];
-    if (!f) return;
-    if (f.type === 'application/pdf') { processPDF(f); } else { showError('Selecciona un archivo PDF valido.'); }
+    var files = e.target.files;
+    if (!files || files.length === 0) return;
+    var pdfFiles = [];
+    for (var i = 0; i < files.length; i++) {
+      if (files[i].type === 'application/pdf') pdfFiles.push(files[i]);
+    }
+    if (pdfFiles.length === 0) { showError('Selecciona archivos PDF validos.'); return; }
+    processMultiplePDFs(pdfFiles);
   });
 
   // Initialize with Mode 1 active
