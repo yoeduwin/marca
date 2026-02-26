@@ -683,6 +683,22 @@
     });
   }
 
+  function addFooterPageCount(page, cfg) {
+    const { currentPage, totalPages, reportNumber, font } = cfg;
+    const width = page.getWidth();
+    const footerText = 'Página ' + currentPage + ' de ' + totalPages + ', reconocida como parte del informe "' + reportNumber + '"';
+    const fontSize = 8;
+    const textWidth = font.widthOfTextAtSize(footerText, fontSize);
+
+    page.drawText(footerText, {
+      x: (width - textWidth) / 2,
+      y: 18,
+      size: fontSize,
+      font: font,
+      color: PDFLib.rgb(0.35, 0.35, 0.35)
+    });
+  }
+
   // =========================================================================
   // PROCESS SINGLE PDF (returns result object)
   // =========================================================================
@@ -721,6 +737,16 @@
       const certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
       await buildCertificationPage(certPage, pdfDoc, { font, fontBold, reportNumber, totalPages });
       applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+
+      const finalPages = pdfDoc.getPages();
+      for (let i = 0; i < finalPages.length; i++) {
+        addFooterPageCount(finalPages[i], {
+          currentPage: i + 1,
+          totalPages: finalPages.length,
+          reportNumber: reportNumber,
+          font: font
+        });
+      }
 
       pdfDoc.setTitle('Informe Final Digital ' + reportNumber);
       pdfDoc.setAuthor('Ejecutiva Ambiental');
