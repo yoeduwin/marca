@@ -759,10 +759,9 @@
         }
       }
 
-      let certPage = null;
       if (includeCertificate) {
         const totalPages = pages.length;
-        certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
+        const certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
         await buildCertificationPage(certPage, pdfDoc, { font, fontBold, reportNumber, totalPages });
         if (enableWatermark) {
           applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
@@ -771,29 +770,20 @@
 
       if (enablePagination) {
         const finalPages = pdfDoc.getPages();
-        const pagesForNumbering = [];
-        for (let i = 0; i < finalPages.length; i++) {
-          if (!includeCertificate || finalPages[i] !== certPage) pagesForNumbering.push(finalPages[i]);
-        }
+        const certPageIndex = includeCertificate ? 1 : -1;
+        const numberedTotal = includeCertificate ? finalPages.length - 1 : finalPages.length;
+        let numberedPage = 0;
 
-        for (let i = 0; i < pagesForNumbering.length; i++) {
-          addFooterPageCount(pagesForNumbering[i], {
-            currentPage: i + 1,
-            totalPages: pagesForNumbering.length,
+        for (let i = 0; i < finalPages.length; i++) {
+          if (i === certPageIndex) continue;
+          numberedPage += 1;
+          addFooterPageCount(finalPages[i], {
+            currentPage: numberedPage,
+            totalPages: numberedTotal,
             reportNumber: reportNumber,
             font: font
           });
         }
-      }
-
-      const finalPages = pdfDoc.getPages();
-      for (let i = 0; i < finalPages.length; i++) {
-        addFooterPageCount(finalPages[i], {
-          currentPage: i + 1,
-          totalPages: finalPages.length,
-          reportNumber: reportNumber,
-          font: font
-        });
       }
 
       pdfDoc.setTitle('Informe Final Digital ' + reportNumber);
