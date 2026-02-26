@@ -20,7 +20,7 @@
       box-shadow:0 20px 60px rgba(0,0,0,.10);overflow:hidden;
     }
     .header{
-      background: linear-gradient(135deg,#005600,#0a7a2c);
+      background: linear-gradient(135deg,#005600,#007836);
       color:white;padding:28px;text-align:center;
     }
     .header h1{font-size:1.6rem;font-weight:700;margin-bottom:6px}
@@ -32,7 +32,7 @@
     }
     .btn{
       border:none;border-radius:999px;padding:12px 24px;font-weight:700;cursor:pointer;
-      color:white;background:linear-gradient(135deg,#005600,#0a7a2c);
+      color:white;background:linear-gradient(135deg,#005600,#007836);
       box-shadow:0 8px 24px rgba(0,86,0,.30);transition:all .25s ease;
       display:inline-block;text-decoration:none;margin-top:14px
     }
@@ -48,7 +48,7 @@
     .file-input{display:none}
     .note{color:#555;margin-top:10px;font-size:0.9rem}
     .config-panel{
-      background:#f8f9fa;border-radius:12px;padding:20px;margin-bottom:20px;
+      background:linear-gradient(180deg,#ffffff,#f6fbf8);border-radius:14px;padding:22px;margin-bottom:20px;border:1px solid #dbe9df;box-shadow:0 8px 24px rgba(0,86,0,.08);
     }
     .config-panel h3{color:#005600;margin-bottom:16px;font-size:1.1rem}
     .input-group{margin-bottom:14px}
@@ -58,6 +58,9 @@
     .input-group input:focus,.input-group select:focus{outline:none;border-color:#005600}
     .checkbox-group{display:flex;align-items:center;gap:8px}
     .checkbox-group input{width:auto}
+    .stack{display:grid;gap:10px}
+    .option-card{padding:12px;border:1px solid #d7e9dd;border-radius:10px;background:#fff}
+    .option-card label{font-weight:600;color:#184d2a}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .info-box{background:#e8f5e9;border-left:4px solid #005600;padding:12px;margin-bottom:16px;border-radius:6px}
     .info-box p{font-size:0.85rem;color:#2e7d32;line-height:1.5}
@@ -67,9 +70,9 @@
     .mode-selector{display:flex;gap:12px;margin-bottom:20px}
     .mode-btn{
       flex:1;padding:16px;border:2px solid #ddd;border-radius:12px;
-      background:#f8f9fa;cursor:pointer;text-align:center;transition:all .25s ease;
+      background:#f6fbf8;cursor:pointer;text-align:center;transition:all .25s ease;
     }
-    .mode-btn:hover{border-color:#aaa;background:#f0f0f0}
+    .mode-btn:hover{border-color:#7fb59a;background:#eef8f1}
     .mode-btn.active{
       border-color:#005600;background:#e8f5e9;
       box-shadow:0 4px 12px rgba(0,86,0,.15);
@@ -86,7 +89,7 @@
     /* File results list */
     .file-result-item{
       display:flex;align-items:center;justify-content:space-between;
-      background:#f8f9fa;border:1px solid #e0e0e0;border-radius:10px;
+      background:#f6fbf8;border:1px solid #e0e0e0;border-radius:10px;
       padding:12px 16px;margin-bottom:8px;gap:12px;text-align:left;
     }
     .file-result-item .file-info{flex:1;min-width:0}
@@ -112,17 +115,17 @@
       <div class="mode-selector">
         <div id="modeFinal" class="mode-btn active" onclick="setMode('final')">
           <h4>Informe Final Digital</h4>
-          <p>Certificacion + marca de agua en todas las paginas + QR</p>
+          <p>Certificado opcional + marca de agua opcional + paginacion profesional</p>
         </div>
         <div id="modeMarca" class="mode-btn" onclick="setMode('marca')">
           <h4>Preliminar y para Anexos</h4>
-          <p>Marca de agua con rango de paginas, sin certificacion</p>
+          <p>Marca de agua y/o paginacion por rango, sin certificacion</p>
         </div>
       </div>
 
       <!-- Info box (Mode 1 only) -->
       <div id="infoBoxFinal" class="info-box">
-        <p><strong>Funcionalidades:</strong> Este sistema agrega automaticamente una pagina de certificacion (pagina 2) con conteo de paginas, fecha, QR de verificacion y marca de agua diagonal en todo el documento.</p>
+        <p><strong>Funcionalidades:</strong> Este sistema permite agregar certificado opcional (sin formar parte de la numeración), paginación general y marca de agua configurable.</p>
       </div>
 
       <div class="config-panel">
@@ -132,6 +135,25 @@
         <div id="panelReportNumber" class="input-group">
           <label>Numero de informe:</label>
           <input type="text" id="reportNumber" placeholder="Ej: EA2601-036-0012" />
+        </div>
+
+
+        <div id="panelFinalOptions" class="stack" style="margin-bottom:14px">
+          <div class="input-group checkbox-group option-card">
+            <input type="checkbox" id="includeCertificate" checked />
+            <label for="includeCertificate">Agregar página de certificado (sin numeración)</label>
+          </div>
+        </div>
+
+        <div id="panelMarkingOptions" class="grid-2" style="margin-bottom:10px">
+          <div class="input-group checkbox-group option-card">
+            <input type="checkbox" id="applyWatermark" checked />
+            <label for="applyWatermark">Aplicar marca de agua</label>
+          </div>
+          <div class="input-group checkbox-group option-card">
+            <input type="checkbox" id="applyPagination" checked />
+            <label for="applyPagination">Agregar solo paginación</label>
+          </div>
         </div>
 
         <!-- Text option selector -->
@@ -291,12 +313,13 @@
     toggle('infoBoxFinal', mode === 'final');
     toggle('panelPageRange', mode === 'marca');
     toggle('panelCheckboxes', mode === 'marca');
+    toggle('panelFinalOptions', mode === 'final');
 
     updateTextOptionVisibility();
 
     document.getElementById('dropNote').textContent = mode === 'final'
-      ? 'Se insertara una pagina de certificacion en la posicion 2 del documento.'
-      : 'Se aplicara marca de agua en las paginas seleccionadas.';
+      ? 'Puedes activar certificado opcional (no se numera) y elegir marca de agua o solo paginación.'
+      : 'Se aplicará marca de agua y/o paginación en las páginas seleccionadas.';
   }
 
   function toggle(id, show) {
@@ -705,7 +728,8 @@
   async function processSinglePDF(file, opts) {
     const { textOption, reportNumber, text1: baseText1, text2: baseText2,
             density, baseOpacity, config, shouldFlatten, flatScale, flatQuality,
-            multiLayerChecked, pageFromVal, pageToVal } = opts;
+            multiLayerChecked, pageFromVal, pageToVal,
+            enableWatermark, enablePagination, includeCertificate } = opts;
 
     const bytes = await file.arrayBuffer();
     const pdfDoc = await PDFLib.PDFDocument.load(bytes);
@@ -729,14 +753,38 @@
 
     if (currentMode === 'final') {
       const pages = pdfDoc.getPages();
-      for (const page of pages) {
-        applyWatermark(page, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+      if (enableWatermark) {
+        for (const page of pages) {
+          applyWatermark(page, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+        }
       }
 
-      const totalPages = pages.length + 1;
-      const certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
-      await buildCertificationPage(certPage, pdfDoc, { font, fontBold, reportNumber, totalPages });
-      applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+      let certPage = null;
+      if (includeCertificate) {
+        const totalPages = pages.length;
+        certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
+        await buildCertificationPage(certPage, pdfDoc, { font, fontBold, reportNumber, totalPages });
+        if (enableWatermark) {
+          applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+        }
+      }
+
+      if (enablePagination) {
+        const finalPages = pdfDoc.getPages();
+        const pagesForNumbering = [];
+        for (let i = 0; i < finalPages.length; i++) {
+          if (!includeCertificate || finalPages[i] !== certPage) pagesForNumbering.push(finalPages[i]);
+        }
+
+        for (let i = 0; i < pagesForNumbering.length; i++) {
+          addFooterPageCount(pagesForNumbering[i], {
+            currentPage: i + 1,
+            totalPages: pagesForNumbering.length,
+            reportNumber: reportNumber,
+            font: font
+          });
+        }
+      }
 
       const finalPages = pdfDoc.getPages();
       for (let i = 0; i < finalPages.length; i++) {
@@ -763,7 +811,17 @@
       const pageTo = Math.max(pageFrom, Math.min(pageToVal || totalPageCount, totalPageCount));
 
       for (let i = pageFrom - 1; i < pageTo; i++) {
-        applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: 'simple', multiLayer: multiLayerChecked }));
+        if (enableWatermark) {
+          applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: 'simple', multiLayer: multiLayerChecked }));
+        }
+        if (enablePagination) {
+          addFooterPageCount(pages[i], {
+            currentPage: i + 1,
+            totalPages: totalPageCount,
+            reportNumber: reportNumber || 'N/A',
+            font: font
+          });
+        }
       }
 
       pdfDoc.setTitle('Documento Protegido con Marca de Agua');
@@ -827,12 +885,17 @@
     const textOption = document.querySelector('input[name="textOption"]:checked').value;
     const reportNumber = document.getElementById('reportNumber').value.trim();
 
-    if (currentMode === 'final' && !reportNumber) {
-      showError('Por favor ingresa el numero de informe.');
+    const enableWatermark = document.getElementById('applyWatermark').checked;
+    const enablePagination = document.getElementById('applyPagination').checked;
+    const includeCertificate = document.getElementById('includeCertificate').checked;
+
+    if (!enableWatermark && !enablePagination) {
+      showError('Selecciona al menos una salida: marca de agua o paginación.');
       return;
     }
-    if (textOption === 'predefined' && !reportNumber) {
-      showError('Por favor ingresa el numero de informe para el texto predefinido.');
+
+    if ((currentMode === 'final' || enablePagination || textOption === 'predefined') && !reportNumber) {
+      showError('Por favor ingresa el numero de informe.');
       return;
     }
 
@@ -876,7 +939,8 @@
       const opts = {
         textOption, reportNumber, text1, text2: text2,
         density, baseOpacity, config, shouldFlatten, flatScale, flatQuality,
-        multiLayerChecked, pageFromVal, pageToVal
+        multiLayerChecked, pageFromVal, pageToVal,
+        enableWatermark, enablePagination, includeCertificate
       };
 
       const results = [];
