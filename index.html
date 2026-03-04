@@ -9,202 +9,430 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{
+    /* ===================== BASE ===================== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
       font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);
-      min-height:100vh;padding:20px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh; padding: 20px;
     }
-    .container{
-      max-width: 960px;margin:0 auto;background:white;border-radius:20px;
-      box-shadow:0 20px 60px rgba(0,0,0,.10);overflow:hidden;
+    .container {
+      max-width: 820px; margin: 0 auto; background: white;
+      border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.10); overflow: hidden;
     }
-    .header{
-      background: linear-gradient(135deg,#005600,#007836);
-      color:white;padding:28px;text-align:center;
-    }
-    .header h1{font-size:1.6rem;font-weight:700;margin-bottom:6px}
-    .header p{opacity:.92}
-    .main{padding:32px}
-    .drop-zone{
-      border:3px dashed #005600;border-radius:16px;padding:40px 20px;text-align:center;
-      background: linear-gradient(45deg,#f8fff8,#f0f8f0);
-    }
-    .btn{
-      border:none;border-radius:999px;padding:12px 24px;font-weight:700;cursor:pointer;
-      color:white;background:linear-gradient(135deg,#005600,#007836);
-      box-shadow:0 8px 24px rgba(0,86,0,.30);transition:all .25s ease;
-      display:inline-block;text-decoration:none;margin-top:14px
-    }
-    .btn:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,86,0,.35)}
-    .processing,.result{display:none;text-align:center;padding:28px}
-    .spinner{width:54px;height:54px;border:4px solid #e0e0e0;border-top:4px solid #005600;border-radius:50%;
-      animation:spin 1s linear infinite;margin:0 auto 16px}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .success{width:80px;height:80px;background:linear-gradient(135deg,#00c851,#00a043);
-      border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;
-      box-shadow:0 10px 30px rgba(0,200,81,.30)}
-    .success svg{width:40px;height:40px;fill:white}
-    .file-input{display:none}
-    .note{color:#555;margin-top:10px;font-size:0.9rem}
-    .config-panel{
-      background:linear-gradient(180deg,#ffffff,#f6fbf8);border-radius:14px;padding:22px;margin-bottom:20px;border:1px solid #dbe9df;box-shadow:0 8px 24px rgba(0,86,0,.08);
-    }
-    .config-panel h3{color:#005600;margin-bottom:16px;font-size:1.1rem}
-    .input-group{margin-bottom:14px}
-    .input-group label{display:block;color:#333;font-weight:600;margin-bottom:6px;font-size:0.9rem}
-    .input-group input,.input-group select{width:100%;padding:10px;border:2px solid #ddd;
-      border-radius:8px;font-size:0.95rem;transition:border .2s}
-    .input-group input:focus,.input-group select:focus{outline:none;border-color:#005600}
-    .checkbox-group{display:flex;align-items:center;gap:8px}
-    .checkbox-group input{width:auto}
-    .stack{display:grid;gap:10px}
-    .option-card{padding:12px;border:1px solid #d7e9dd;border-radius:10px;background:#fff}
-    .option-card label{font-weight:600;color:#184d2a}
-    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .info-box{background:#e8f5e9;border-left:4px solid #005600;padding:12px;margin-bottom:16px;border-radius:6px}
-    .info-box p{font-size:0.85rem;color:#2e7d32;line-height:1.5}
-    .hidden{display:none !important}
+    .hidden { display: none !important; }
 
-    /* Mode selector */
-    .mode-selector{display:flex;gap:12px;margin-bottom:20px}
-    .mode-btn{
-      flex:1;padding:16px;border:2px solid #ddd;border-radius:12px;
-      background:#f6fbf8;cursor:pointer;text-align:center;transition:all .25s ease;
+    /* ===================== HEADER ===================== */
+    .header {
+      background: linear-gradient(135deg, #005600, #007836);
+      color: white; padding: 22px 32px; text-align: center;
     }
-    .mode-btn:hover{border-color:#7fb59a;background:#eef8f1}
-    .mode-btn.active{
-      border-color:#005600;background:#e8f5e9;
-      box-shadow:0 4px 12px rgba(0,86,0,.15);
-    }
-    .mode-btn h4{color:#333;margin-bottom:4px;font-size:1rem}
-    .mode-btn.active h4{color:#005600}
-    .mode-btn p{font-size:0.8rem;color:#666;margin:0}
+    .header h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
+    .header p { opacity: .88; font-size: 0.85rem; }
 
-    /* Radio group for text option */
-    .radio-group{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap}
-    .radio-group label{font-weight:400;display:flex;align-items:center;gap:6px;font-size:0.9rem;cursor:pointer}
-    .radio-group input[type="radio"]{width:auto;margin:0}
+    /* ===================== STEPPER ===================== */
+    .stepper {
+      display: flex; align-items: flex-start;
+      padding: 18px 32px 14px; background: #f8fdf8;
+      border-bottom: 1px solid #e0eae2;
+    }
+    .step-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 5px; min-width: 58px;
+    }
+    .step-circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid #ccc; background: #fff;
+      color: #bbb; display: flex; align-items: center;
+      justify-content: center; font-weight: 700;
+      font-size: 0.82rem; transition: all 0.3s;
+    }
+    .step-label {
+      font-size: 0.68rem; color: #bbb;
+      font-weight: 600; white-space: nowrap; text-align: center;
+    }
+    .step-connector {
+      flex: 1; height: 2px; background: #ddd;
+      margin: 15px 4px 0; align-self: flex-start;
+      transition: background 0.3s;
+    }
+    .step-item.completed .step-circle { background: #005600; border-color: #005600; color: white; }
+    .step-item.completed .step-label { color: #005600; }
+    .step-item.active .step-circle {
+      border-color: #005600; color: #005600;
+      box-shadow: 0 0 0 4px rgba(0,86,0,0.12);
+    }
+    .step-item.active .step-label { color: #005600; font-weight: 700; }
+    .step-connector.done { background: #005600; }
 
-    /* File results list */
-    .file-result-item{
-      display:flex;align-items:center;justify-content:space-between;
-      background:#f6fbf8;border:1px solid #e0e0e0;border-radius:10px;
-      padding:12px 16px;margin-bottom:8px;gap:12px;text-align:left;
+    /* ===================== STEP PANELS ===================== */
+    .step-panel { padding: 26px 32px; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .step-title { font-size: 1.05rem; font-weight: 700; color: #1a1a1a; margin-bottom: 5px; }
+    .step-subtitle { font-size: 0.83rem; color: #666; margin-bottom: 22px; line-height: 1.5; }
+
+    /* ===================== STEP 1: MODO ===================== */
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 26px; }
+    .mode-card {
+      padding: 20px; border: 2px solid #ddd; border-radius: 16px;
+      background: #fafafa; cursor: pointer; transition: all 0.22s; text-align: left;
     }
-    .file-result-item .file-info{flex:1;min-width:0}
-    .file-result-item .file-name{
-      font-weight:600;color:#333;font-size:0.9rem;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    .mode-card:hover { border-color: #7fb59a; background: #f2faf3; }
+    .mode-card.active {
+      border-color: #005600; background: #e8f5e9;
+      box-shadow: 0 4px 16px rgba(0,86,0,0.14);
     }
-    .file-result-item .file-size{font-size:0.8rem;color:#888;margin-top:2px}
-    .file-result-item .btn{margin-top:0;white-space:nowrap;font-size:0.85rem;padding:8px 18px}
+    .mode-icon { font-size: 1.8rem; margin-bottom: 10px; display: block; }
+    .mode-card h4 { color: #333; margin-bottom: 7px; font-size: 0.97rem; }
+    .mode-card.active h4 { color: #005600; }
+    .mode-card p { font-size: 0.8rem; color: #666; margin: 0; }
+    .mode-card ul {
+      list-style: none; margin: 10px 0 0; padding: 0;
+      font-size: 0.78rem; color: #555; line-height: 2;
+    }
+    .mode-card ul li::before { content: '✓ '; color: #005600; font-weight: 700; }
+
+    /* ===================== STEP 2: CONFIG ===================== */
+    .config-section { margin-bottom: 18px; }
+    .section-head {
+      font-size: 0.82rem; font-weight: 700; color: #005600;
+      margin-bottom: 12px; display: flex; align-items: center; gap: 7px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .field-row { margin-bottom: 11px; }
+    .field-row > label {
+      display: block; color: #333; font-weight: 600;
+      margin-bottom: 5px; font-size: 0.83rem;
+    }
+    .field-row input[type="text"],
+    .field-row input[type="number"],
+    .field-row select {
+      width: 100%; padding: 9px 12px; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 0.88rem; font-family: inherit;
+      transition: border 0.2s; background: #fff;
+    }
+    .field-row input:focus, .field-row select:focus { outline: none; border-color: #005600; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Toggle row (checkbox + label) */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 13px; background: #f6fbf8; border: 1px solid #dbe9df;
+      border-radius: 10px; margin-bottom: 7px; cursor: pointer;
+      transition: background 0.18s;
+    }
+    .toggle-row:hover { background: #edf7ef; }
+    .toggle-label { font-weight: 600; color: #222; font-size: 0.86rem; display: block; }
+    .toggle-row small { font-size: 0.73rem; color: #777; display: block; margin-top: 2px; }
+    .toggle-row input[type="checkbox"] {
+      width: 18px; height: 18px; cursor: pointer;
+      accent-color: #005600; flex-shrink: 0;
+    }
+
+    /* Radio group */
+    .radio-group { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 4px; }
+    .radio-group label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.83rem; font-weight: 400; cursor: pointer; color: #444;
+    }
+    .radio-group input[type="radio"] { accent-color: #005600; width: auto; margin: 0; }
+
+    /* Advanced accordion */
+    .advanced-toggle {
+      display: flex; align-items: center; gap: 8px; padding: 12px 0;
+      cursor: pointer; color: #005600; font-weight: 700; font-size: 0.86rem;
+      border-top: 1px solid #e0eae2; margin-top: 2px; user-select: none;
+    }
+    .advanced-toggle .caret { font-size: 0.65rem; transition: transform 0.22s; display: inline-block; }
+    .advanced-toggle.open .caret { transform: rotate(180deg); }
+    .advanced-body { padding-top: 12px; }
+    .advanced-divider { border: none; border-top: 1px dashed #d4e8da; margin: 14px 0; }
+
+    /* ===================== STEP 3: ARCHIVOS ===================== */
+    .drop-zone {
+      border: 3px dashed #005600; border-radius: 16px; padding: 34px 20px;
+      text-align: center; background: linear-gradient(45deg, #f8fff8, #f0f8f0);
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .drop-zone.drag-over { background: #dff5e0; border-color: #003e00; }
+    .drop-zone p { color: #555; margin-bottom: 12px; font-size: 0.93rem; }
+    .drop-zone .hint { font-size: 0.78rem; color: #999; margin-top: 10px; }
+
+    .file-list { margin-top: 14px; }
+    .file-list-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 13px; background: #f6fbf8;
+      border: 1px solid #dbe9df; border-radius: 8px; margin-bottom: 6px;
+    }
+    .f-icon { color: #c0392b; font-size: 1rem; flex-shrink: 0; }
+    .f-name {
+      flex: 1; font-size: 0.83rem; font-weight: 600; color: #333;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .f-size { font-size: 0.75rem; color: #999; flex-shrink: 0; }
+    .f-remove {
+      background: none; border: none; cursor: pointer;
+      color: #ccc; font-size: 0.9rem; padding: 3px 7px; border-radius: 4px;
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .f-remove:hover { color: #c0392b; background: #fde8e8; }
+
+    .validation-msg {
+      background: #fff3cd; border: 1px solid #ffc107;
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 0.83rem; color: #856404; margin-bottom: 14px;
+    }
+
+    /* ===================== STEP 4: PROCESO / RESULTADOS ===================== */
+    .process-area { text-align: center; padding: 18px 0; }
+    .spinner {
+      width: 52px; height: 52px; border: 4px solid #e0e0e0;
+      border-top: 4px solid #005600; border-radius: 50%;
+      animation: spin 1s linear infinite; margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .success-icon {
+      width: 68px; height: 68px; background: linear-gradient(135deg, #00c851, #00a043);
+      border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; margin: 0 auto 16px;
+      box-shadow: 0 8px 24px rgba(0,200,81,.26);
+    }
+    .success-icon svg { width: 34px; height: 34px; fill: white; }
+    .process-title { font-size: 1rem; font-weight: 700; color: #005600; margin-bottom: 6px; }
+    .process-note { font-size: 0.83rem; color: #666; }
+
+    .result-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f6fbf8; border: 1px solid #dbe9df; border-radius: 10px;
+      padding: 11px 15px; margin-bottom: 7px; gap: 12px; text-align: left;
+    }
+    .result-item .r-info { flex: 1; min-width: 0; }
+    .result-item .r-name {
+      font-weight: 700; color: #222; font-size: 0.86rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .result-item .r-size { font-size: 0.76rem; color: #888; margin-top: 2px; }
+
+    .error-panel {
+      color: #dc3545; background: #f8d7da; border: 1px solid #f5c6cb;
+      border-radius: 12px; padding: 18px; margin-bottom: 16px; text-align: center;
+    }
+    .error-panel h4 { margin-bottom: 6px; }
+    .error-panel p { font-size: 0.88rem; }
+
+    /* ===================== BUTTONS ===================== */
+    .btn {
+      border: none; border-radius: 999px; padding: 11px 24px;
+      font-weight: 700; cursor: pointer; color: white;
+      background: linear-gradient(135deg, #005600, #007836);
+      box-shadow: 0 6px 18px rgba(0,86,0,0.26);
+      transition: all .22s ease; display: inline-flex;
+      align-items: center; gap: 6px; font-family: inherit;
+      font-size: 0.88rem; text-decoration: none;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,86,0,.34); }
+    .btn:disabled { opacity: 0.48; cursor: not-allowed; transform: none !important; box-shadow: none; }
+    .btn-secondary { background: linear-gradient(135deg, #666, #888); box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+    .btn-ghost {
+      background: transparent; color: #005600;
+      box-shadow: none; border: 2px solid #005600;
+    }
+    .btn-ghost:hover:not(:disabled) { background: #e8f5e9; }
+    .file-input { display: none; }
+
+    /* ===================== NAV ===================== */
+    .step-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 26px; padding-top: 18px; border-top: 1px solid #e8ede9;
+    }
+    .step-nav.end { justify-content: flex-end; }
+
+    @media (max-width: 600px) {
+      .stepper { padding: 14px 16px 10px; }
+      .step-label { display: none; }
+      .step-panel { padding: 20px 18px; }
+      .mode-grid { grid-template-columns: 1fr; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 <div class="container">
+
+  <!-- HEADER -->
   <div class="header">
     <h1>SISTEMA DE PROTECCIÓN Y CERTIFICACIÓN EJECUTIVA</h1>
-    <p>Sistema de proteccion y certificacion de documentos</p>
+    <p>Ejecutiva Ambiental · Seguridad e Higiene</p>
   </div>
 
-  <div class="main">
-    <section id="upload">
+  <!-- STEPPER -->
+  <div class="stepper">
+    <div class="step-item active" id="stepItem1">
+      <div class="step-circle">1</div>
+      <div class="step-label">Modo</div>
+    </div>
+    <div class="step-connector" id="conn1"></div>
+    <div class="step-item" id="stepItem2">
+      <div class="step-circle">2</div>
+      <div class="step-label">Config.</div>
+    </div>
+    <div class="step-connector" id="conn2"></div>
+    <div class="step-item" id="stepItem3">
+      <div class="step-circle">3</div>
+      <div class="step-label">Archivos</div>
+    </div>
+    <div class="step-connector" id="conn3"></div>
+    <div class="step-item" id="stepItem4">
+      <div class="step-circle">4</div>
+      <div class="step-label">Resultado</div>
+    </div>
+  </div>
 
-      <!-- Mode Selector -->
-      <div class="mode-selector">
-        <div id="modeFinal" class="mode-btn active" onclick="setMode('final')">
-          <h4>Informe Final Digital</h4>
-          <p>Certificado opcional + marca de agua opcional + paginacion profesional</p>
-        </div>
-        <div id="modeMarca" class="mode-btn" onclick="setMode('marca')">
-          <h4>Preliminar y para Anexos</h4>
-          <p>Marca de agua y/o paginacion por rango, sin certificacion</p>
-        </div>
+  <!-- ===== STEP 1: MODO ===== -->
+  <section id="step1" class="step-panel">
+    <p class="step-title">¿Qué tipo de documento vas a procesar?</p>
+    <p class="step-subtitle">Elige el modo según el propósito del documento. Esto ajustará automáticamente las opciones disponibles.</p>
+
+    <div class="mode-grid">
+      <div class="mode-card active" id="cardFinal">
+        <span class="mode-icon">📋</span>
+        <h4>Informe Final Digital</h4>
+        <p>Para informes oficiales con certificación y numeración profesional.</p>
+        <ul>
+          <li>Certificado opcional (pág. 2, sin numerar)</li>
+          <li>Paginación excluyendo el certificado</li>
+          <li>Marca de agua configurable</li>
+          <li>Metadata institucional completa</li>
+        </ul>
+      </div>
+      <div class="mode-card" id="cardMarca">
+        <span class="mode-icon">🔏</span>
+        <h4>Preliminar / Anexos</h4>
+        <p>Para documentos de trabajo, borradores o anexos.</p>
+        <ul>
+          <li>Marca de agua y/o paginación por rango</li>
+          <li>Timestamp automático opcional</li>
+          <li>Protección multicapa</li>
+          <li>Sin página de certificación</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step-nav end">
+      <button class="btn" id="btnStep1Next">Siguiente →</button>
+    </div>
+  </section>
+
+  <!-- ===== STEP 2: CONFIGURACIÓN ===== -->
+  <section id="step2" class="step-panel hidden">
+    <p class="step-title">Configura las opciones de procesamiento</p>
+    <p class="step-subtitle" id="step2Subtitle"></p>
+
+    <!-- BÁSICO -->
+    <div class="config-section">
+      <div class="section-head">⚙ Opciones básicas</div>
+
+      <div id="rowReportNumber" class="field-row">
+        <label for="reportNumber">Número de informe</label>
+        <input type="text" id="reportNumber" placeholder="Ej: EA2601-036-0012" autocomplete="off" />
       </div>
 
-      <!-- Info box (Mode 1 only) -->
-      <div id="infoBoxFinal" class="info-box">
-        <p><strong>Funcionalidades:</strong> Este sistema permite agregar certificado opcional (sin formar parte de la numeración), paginación general y marca de agua configurable.</p>
+      <div id="rowCertificate">
+        <label class="toggle-row" for="includeCertificate">
+          <div>
+            <span class="toggle-label">Agregar página de certificado</span>
+            <small>Se inserta como pág. 2 — excluida de la numeración</small>
+          </div>
+          <input type="checkbox" id="includeCertificate" />
+        </label>
       </div>
 
-      <div class="config-panel">
-        <h3>Configuracion</h3>
-
-        <!-- Report Number -->
-        <div id="panelReportNumber" class="input-group">
-          <label>Numero de informe:</label>
-          <input type="text" id="reportNumber" placeholder="Ej: EA2601-036-0012" />
+      <label class="toggle-row" for="applyWatermark">
+        <div>
+          <span class="toggle-label">Aplicar marca de agua</span>
+          <small>Texto diagonal de protección de autoría</small>
         </div>
+        <input type="checkbox" id="applyWatermark" />
+      </label>
 
-
-        <div id="panelFinalOptions" class="stack" style="margin-bottom:14px">
-          <div class="input-group checkbox-group option-card">
-            <input type="checkbox" id="includeCertificate" checked />
-            <label for="includeCertificate">Agregar página de certificado (sin numeración)</label>
-          </div>
+      <label class="toggle-row" for="applyPagination">
+        <div>
+          <span class="toggle-label">Agregar paginación</span>
+          <small>Pie de página con número de informe</small>
         </div>
+        <input type="checkbox" id="applyPagination" />
+      </label>
+    </div>
 
-        <div id="panelMarkingOptions" class="grid-2" style="margin-bottom:10px">
-          <div class="input-group checkbox-group option-card">
-            <input type="checkbox" id="applyWatermark" checked />
-            <label for="applyWatermark">Aplicar marca de agua</label>
-          </div>
-          <div class="input-group checkbox-group option-card">
-            <input type="checkbox" id="applyPagination" checked />
-            <label for="applyPagination">Agregar solo paginación</label>
-          </div>
-        </div>
+    <!-- AVANZADO (acordeón) -->
+    <div id="advancedToggle" class="advanced-toggle">
+      <span class="caret">▲</span>
+      <span>Opciones avanzadas</span>
+    </div>
+    <div id="advancedBody" class="advanced-body hidden">
 
-        <!-- Text option selector -->
-        <div class="input-group">
-          <label>Texto de la marca de agua:</label>
+      <!-- Texto de marca de agua -->
+      <div id="rowTextOption" class="config-section">
+        <div class="section-head">✏ Texto de la marca de agua</div>
+        <div class="field-row">
           <div class="radio-group">
-            <label><input type="radio" name="textOption" value="predefined" checked onchange="updateTextOptionVisibility()"> Predefinido (INFORME EJECUTIVA AMBIENTAL + No. informe)</label>
-            <label><input type="radio" name="textOption" value="custom" onchange="updateTextOptionVisibility()"> Personalizado</label>
+            <label>
+              <input type="radio" name="textOption" value="predefined" id="radioPredefined" />
+              Predefinido <em style="font-size:0.78rem;color:#888">(INFORME EJECUTIVA AMBIENTAL + N.º informe)</em>
+            </label>
+            <label>
+              <input type="radio" name="textOption" value="custom" id="radioCustom" />
+              Personalizado
+            </label>
           </div>
         </div>
-
-        <!-- Custom text fields -->
-        <div id="panelCustomText" class="grid-2 hidden">
-          <div class="input-group">
-            <label>Texto linea 1:</label>
-            <input type="text" id="customText1" value="INFORME PRELIMINAR -" />
+        <div class="grid-2" id="rowCustomText">
+          <div class="field-row">
+            <label for="customText1">Texto línea 1</label>
+            <input type="text" id="customText1" placeholder="INFORME PRELIMINAR -" />
           </div>
-          <div class="input-group">
-            <label>Texto linea 2:</label>
-            <input type="text" id="customText2" value="EJECUTIVA AMBIENTAL 2025" />
+          <div class="field-row">
+            <label for="customText2">Texto línea 2</label>
+            <input type="text" id="customText2" placeholder="EJECUTIVA AMBIENTAL 2025" />
           </div>
         </div>
+      </div>
 
-        <!-- Page range (Mode 2 only) -->
-        <div id="panelPageRange" class="hidden">
-          <label style="display:block;color:#333;font-weight:600;margin-bottom:6px;font-size:0.9rem">Rango de paginas:</label>
-          <div class="grid-2">
-            <div class="input-group">
-              <label>Desde pagina:</label>
-              <input type="number" id="pageFrom" min="1" value="1" />
-            </div>
-            <div class="input-group">
-              <label>Hasta pagina:</label>
-              <input type="number" id="pageTo" min="1" value="" placeholder="Ultima" />
-            </div>
-          </div>
-          <p class="note" style="font-size:0.8rem;margin-top:4px">Deja "Hasta pagina" vacio para aplicar hasta la ultima pagina del documento.</p>
-        </div>
+      <hr class="advanced-divider">
 
-        <!-- Density and Opacity -->
+      <!-- Rango de páginas (Marca solo) -->
+      <div id="rowPageRange" class="config-section">
+        <div class="section-head">📄 Rango de páginas</div>
         <div class="grid-2">
-          <div class="input-group">
-            <label>Densidad de marca de agua:</label>
+          <div class="field-row">
+            <label for="pageFrom">Desde página</label>
+            <input type="number" id="pageFrom" min="1" value="1" />
+          </div>
+          <div class="field-row">
+            <label for="pageTo">Hasta página</label>
+            <input type="number" id="pageTo" min="1" placeholder="Última" />
+          </div>
+        </div>
+        <p style="font-size:0.76rem;color:#888;margin-top:5px">Deja "Hasta página" vacío para aplicar hasta el final del documento.</p>
+      </div>
+
+      <hr class="advanced-divider" id="dividerPageRange">
+
+      <!-- Densidad y opacidad (si watermark) -->
+      <div id="rowDensityOpacity" class="config-section">
+        <div class="section-head">🎚 Densidad y opacidad</div>
+        <div class="grid-2">
+          <div class="field-row">
+            <label for="density">Densidad</label>
             <select id="density">
-              <option value="baja">Baja (estandar)</option>
+              <option value="baja">Baja (estándar)</option>
               <option value="media" selected>Media (recomendada)</option>
-              <option value="alta">Alta (maxima proteccion)</option>
+              <option value="alta">Alta (máxima protección)</option>
             </select>
           </div>
-          <div class="input-group">
-            <label>Opacidad:</label>
+          <div class="field-row">
+            <label for="opacity">Opacidad</label>
             <select id="opacity">
               <option value="0.15">Muy sutil (15%)</option>
               <option value="0.20">Equilibrada (20%)</option>
@@ -215,790 +443,909 @@
             </select>
           </div>
         </div>
+      </div>
 
-        <!-- Checkboxes (Mode 2 only) -->
-        <div id="panelCheckboxes" class="hidden">
-          <div class="input-group checkbox-group">
-            <input type="checkbox" id="addTimestamp" checked />
-            <label for="addTimestamp">Incluir fecha y hora automatica</label>
-          </div>
-          <div class="input-group checkbox-group">
-            <input type="checkbox" id="multiLayer" checked />
-            <label for="multiLayer">Activar multiples capas de proteccion</label>
-          </div>
-        </div>
+      <hr class="advanced-divider" id="dividerDensity">
 
-        <!-- Aplanamiento (ambos modos) -->
-        <div class="input-group checkbox-group" style="margin-top:10px">
-          <input type="checkbox" id="flattenDoc" checked onchange="toggleFlattenOptions()" />
-          <label for="flattenDoc">Aplanar documento (proteccion maxima - fusiona marca de agua con contenido)</label>
-        </div>
-        <div id="panelFlattenOptions" class="grid-2" style="margin-top:8px">
-          <div class="input-group">
-            <label>Resolucion de imagen:</label>
+      <!-- Extras solo Marca (timestamp + multilayer) -->
+      <div id="rowMarcaExtras" class="config-section">
+        <div class="section-head">🕒 Opciones adicionales</div>
+        <label class="toggle-row" for="addTimestamp">
+          <div>
+            <span class="toggle-label">Incluir timestamp automático</span>
+            <small>Agrega fecha y hora al texto de la marca de agua</small>
+          </div>
+          <input type="checkbox" id="addTimestamp" />
+        </label>
+        <label class="toggle-row" for="multiLayer">
+          <div>
+            <span class="toggle-label">Múltiples capas de protección</span>
+            <small>Marca de agua en 2 capas superpuestas (más robusta)</small>
+          </div>
+          <input type="checkbox" id="multiLayer" />
+        </label>
+      </div>
+
+      <hr class="advanced-divider">
+
+      <!-- Aplanamiento -->
+      <div class="config-section">
+        <div class="section-head">🔒 Aplanamiento (anti-edición)</div>
+        <label class="toggle-row" for="flattenDoc">
+          <div>
+            <span class="toggle-label">Aplanar documento (rasterizar con pdf.js)</span>
+            <small>Fusiona la marca de agua con el contenido; impide cualquier edición</small>
+          </div>
+          <input type="checkbox" id="flattenDoc" />
+        </label>
+        <div id="rowFlattenOptions" class="grid-2" style="margin-top:10px">
+          <div class="field-row">
+            <label for="flattenScale">Resolución de imagen</label>
             <select id="flattenScale">
-              <option value="2">Media (144 DPI - archivo ligero)</option>
-              <option value="2.5">Alta (180 DPI - equilibrado)</option>
-              <option value="3" selected>Muy alta (216 DPI - maxima nitidez)</option>
+              <option value="2">Media (144 DPI – archivo ligero)</option>
+              <option value="2.5">Alta (180 DPI – equilibrado)</option>
+              <option value="3" selected>Muy alta (216 DPI – máxima nitidez)</option>
             </select>
           </div>
-          <div class="input-group">
-            <label>Compresion JPEG:</label>
+          <div class="field-row">
+            <label for="flattenQuality">Compresión JPEG</label>
             <select id="flattenQuality">
-              <option value="0.70">Alta compresion (70% - mas ligero)</option>
-              <option value="0.80">Compresion media (80% - equilibrado)</option>
-              <option value="0.92" selected>Baja compresion (92% - mejor calidad)</option>
+              <option value="0.70">Alta compresión (70% – más ligero)</option>
+              <option value="0.80">Media (80% – equilibrado)</option>
+              <option value="0.92" selected>Baja (92% – mejor calidad)</option>
             </select>
           </div>
         </div>
       </div>
 
-      <!-- Drop zone -->
-      <div id="dropZone" class="drop-zone">
-        <p>Arrastra tus PDFs aqui o</p>
-        <button class="btn" onclick="document.getElementById('fileInput').click()">Seleccionar PDFs</button>
-        <input id="fileInput" class="file-input" type="file" accept=".pdf" multiple />
-        <p id="dropNote" class="note">Se insertara una pagina de certificacion en la posicion 2 del documento.</p>
-      </div>
-    </section>
+    </div><!-- /advancedBody -->
 
-    <section id="processing" class="processing">
+    <div class="step-nav">
+      <button class="btn btn-secondary" id="btnStep2Back">← Atrás</button>
+      <button class="btn" id="btnStep2Next">Siguiente →</button>
+    </div>
+  </section>
+
+  <!-- ===== STEP 3: ARCHIVOS ===== -->
+  <section id="step3" class="step-panel hidden">
+    <p class="step-title">Selecciona los archivos PDF</p>
+    <p class="step-subtitle">Puedes procesar múltiples PDFs a la vez con la misma configuración.</p>
+
+    <div id="validationMsg" class="validation-msg hidden"></div>
+
+    <div id="dropZone" class="drop-zone">
+      <p>Arrastra aquí tus PDFs o</p>
+      <button class="btn" id="btnSelectFiles" type="button">Seleccionar archivos</button>
+      <input id="fileInput" class="file-input" type="file" accept=".pdf" multiple />
+      <p class="hint">Se aceptan múltiples archivos PDF</p>
+    </div>
+
+    <div id="fileList" class="file-list"></div>
+
+    <div class="step-nav">
+      <button class="btn btn-secondary" id="btnStep3Back">← Atrás</button>
+      <button class="btn" id="btnProcess" disabled>Procesar</button>
+    </div>
+  </section>
+
+  <!-- ===== STEP 4: PROCESO / RESULTADOS ===== -->
+  <section id="step4" class="step-panel hidden">
+
+    <!-- Processing -->
+    <div id="processingArea" class="process-area">
       <div class="spinner"></div>
-      <h3 id="processingTitle" style="color:#005600;margin-bottom:6px;">Procesando documentos...</h3>
-      <p class="note">Aplicando marcas de agua al documento</p>
-    </section>
+      <p class="process-title" id="processingTitle">Procesando documentos...</p>
+      <p class="process-note" id="processingNote">Aplicando marca de agua...</p>
+    </div>
 
-    <section id="result" class="result">
-      <div class="success">
-        <svg viewBox="0 0 24 24"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+    <!-- Results -->
+    <div id="resultArea" class="hidden">
+      <div class="process-area">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+        </div>
+        <p class="process-title" style="color:#00a043">¡Documentos procesados correctamente!</p>
       </div>
-      <h3 style="color:#00c851;margin-bottom:10px;">Documentos procesados correctamente</h3>
       <div id="resultsList"></div>
-      <div style="margin-top:18px">
-        <button class="btn" style="background:linear-gradient(135deg,#777,#999)" onclick="resetTool()">Procesar otros archivos</button>
+      <div class="step-nav">
+        <button class="btn btn-secondary" id="btnNewConfig">Nueva configuración</button>
+        <button class="btn btn-ghost" id="btnMoreFiles">Procesar más archivos</button>
       </div>
-    </section>
+    </div>
 
-    <section id="error" style="display:none;text-align:center">
-      <div style="color:#dc3545;background:#f8d7da;border:1px solid #f5c6cb;border-radius:12px;padding:18px">
-        <h4>Error al procesar el archivo</h4>
+    <!-- Error -->
+    <div id="errorArea" class="hidden">
+      <div class="error-panel">
+        <h4>Error al procesar</h4>
         <p id="errorMsg">Hubo un problema. Intenta con otro PDF.</p>
       </div>
-      <button class="btn" style="background:linear-gradient(135deg,#777,#999)" onclick="resetTool()">Intentar de nuevo</button>
-    </section>
-  </div>
-</div>
+      <div class="step-nav">
+        <button class="btn btn-secondary" id="btnErrorBack">← Atrás</button>
+      </div>
+    </div>
+
+  </section>
+
+</div><!-- /container -->
 
 <script>
-  // =========================================================================
-  // DOM REFERENCES
-  // =========================================================================
-  const fileInput = document.getElementById('fileInput');
-  const secUpload = document.getElementById('upload');
-  const secProc = document.getElementById('processing');
-  const secRes = document.getElementById('result');
-  const secErr = document.getElementById('error');
+// =========================================================================
+// STATE
+// =========================================================================
+var state = {
+  step: 1,
+  mode: 'final',
+  // Basic config
+  reportNumber: '',
+  includeCertificate: true,
+  applyWatermark: true,
+  applyPagination: true,
+  // Text
+  textOption: 'predefined',
+  customText1: 'INFORME PRELIMINAR -',
+  customText2: 'EJECUTIVA AMBIENTAL 2025',
+  // Marca-only
+  pageFrom: 1,
+  pageTo: '',
+  addTimestamp: true,
+  multiLayer: true,
+  // Advanced watermark
+  density: 'media',
+  opacity: '0.25',
+  // Flatten
+  flattenDoc: true,
+  flattenScale: '3',
+  flattenQuality: '0.92',
+  // UI
+  advancedOpen: false,
+  // Runtime
+  selectedFiles: [],
+  blobURLs: []
+};
 
-  let currentMode = 'final';
-  let blobURLs = [];
+// =========================================================================
+// RENDER
+// =========================================================================
+function setVisible(id, show) {
+  var el = document.getElementById(id);
+  if (el) el.classList.toggle('hidden', !show);
+}
 
-  // =========================================================================
-  // MODE TOGGLE & UI VISIBILITY
-  // =========================================================================
-  function setMode(mode) {
-    currentMode = mode;
-    document.getElementById('modeFinal').classList.toggle('active', mode === 'final');
-    document.getElementById('modeMarca').classList.toggle('active', mode === 'marca');
-
-    toggle('infoBoxFinal', mode === 'final');
-    toggle('panelPageRange', mode === 'marca');
-    toggle('panelCheckboxes', mode === 'marca');
-    toggle('panelFinalOptions', mode === 'final');
-
-    updateTextOptionVisibility();
-
-    document.getElementById('dropNote').textContent = mode === 'final'
-      ? 'Puedes activar certificado opcional (no se numera) y elegir marca de agua o solo paginación.'
-      : 'Se aplicará marca de agua y/o paginación en las páginas seleccionadas.';
-  }
-
-  function toggle(id, show) {
-    document.getElementById(id).classList.toggle('hidden', !show);
-  }
-
-  function updateTextOptionVisibility() {
-    const textOption = document.querySelector('input[name="textOption"]:checked').value;
-    const isPredefined = textOption === 'predefined';
-
-    toggle('panelCustomText', !isPredefined);
-
-    if (currentMode === 'final') {
-      toggle('panelReportNumber', true);
+function renderStepper() {
+  [1, 2, 3, 4].forEach(function(n) {
+    var el = document.getElementById('stepItem' + n);
+    var circle = el.querySelector('.step-circle');
+    el.classList.remove('active', 'completed');
+    if (n < state.step) {
+      el.classList.add('completed');
+      circle.textContent = '✓';
     } else {
-      toggle('panelReportNumber', isPredefined);
+      circle.textContent = n;
     }
+    if (n === state.step) el.classList.add('active');
+  });
+  [1, 2, 3].forEach(function(n) {
+    document.getElementById('conn' + n).classList.toggle('done', n < state.step);
+  });
+}
+
+function renderStepPanels() {
+  [1, 2, 3, 4].forEach(function(n) {
+    var el = document.getElementById('step' + n);
+    if (n === state.step) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  });
+}
+
+function renderModeCards() {
+  document.getElementById('cardFinal').classList.toggle('active', state.mode === 'final');
+  document.getElementById('cardMarca').classList.toggle('active', state.mode === 'marca');
+}
+
+function renderConfigPanel() {
+  var isFinal = state.mode === 'final';
+  var wm = state.applyWatermark;
+
+  document.getElementById('step2Subtitle').textContent = isFinal
+    ? 'Modo: Informe Final Digital — configura certificado, marca de agua y paginación.'
+    : 'Modo: Preliminar / Anexos — configura marca de agua y paginación por rango.';
+
+  // Report number: in final always; in marca if pagination enabled or predefined text
+  setVisible('rowReportNumber',
+    isFinal || state.applyPagination || state.textOption === 'predefined');
+
+  // Certificate only in final
+  setVisible('rowCertificate', isFinal);
+
+  // Advanced accordion open/close
+  var advBody = document.getElementById('advancedBody');
+  var advToggle = document.getElementById('advancedToggle');
+  advBody.classList.toggle('hidden', !state.advancedOpen);
+  advToggle.classList.toggle('open', state.advancedOpen);
+
+  // Text option (watermark only)
+  setVisible('rowTextOption', wm);
+
+  // Custom text (watermark + custom text)
+  setVisible('rowCustomText', wm && state.textOption === 'custom');
+
+  // Page range (marca only)
+  setVisible('rowPageRange', !isFinal);
+  setVisible('dividerPageRange', !isFinal);
+
+  // Density/opacity (watermark only)
+  setVisible('rowDensityOpacity', wm);
+  setVisible('dividerDensity', wm);
+
+  // Marca extras: timestamp + multilayer (marca + watermark)
+  setVisible('rowMarcaExtras', !isFinal && wm);
+
+  // Flatten options
+  setVisible('rowFlattenOptions', state.flattenDoc);
+}
+
+function renderFileList() {
+  var listEl = document.getElementById('fileList');
+  listEl.innerHTML = '';
+
+  state.selectedFiles.forEach(function(file, idx) {
+    var item = document.createElement('div');
+    item.className = 'file-list-item';
+    item.innerHTML =
+      '<span class="f-icon">📄</span>' +
+      '<span class="f-name">' + escHtml(file.name) + '</span>' +
+      '<span class="f-size">' + (file.size / (1024 * 1024)).toFixed(2) + ' MB</span>' +
+      '<button class="f-remove" data-idx="' + idx + '" title="Quitar archivo">✕</button>';
+    listEl.appendChild(item);
+  });
+
+  listEl.querySelectorAll('.f-remove').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var idx = parseInt(btn.dataset.idx);
+      state.selectedFiles.splice(idx, 1);
+      renderUI();
+    });
+  });
+}
+
+function renderStep3() {
+  var errors = validateConfig();
+  var hasFiles = state.selectedFiles.length > 0;
+
+  var msgEl = document.getElementById('validationMsg');
+  if (errors.length > 0) {
+    msgEl.textContent = errors[0];
+    msgEl.classList.remove('hidden');
+  } else {
+    msgEl.classList.add('hidden');
   }
 
-  function toggleFlattenOptions() {
-    const checked = document.getElementById('flattenDoc').checked;
-    toggle('panelFlattenOptions', checked);
+  var btn = document.getElementById('btnProcess');
+  btn.disabled = errors.length > 0 || !hasFiles;
+  var count = state.selectedFiles.length;
+  btn.textContent = count > 0
+    ? 'Procesar ' + count + ' archivo' + (count === 1 ? '' : 's')
+    : 'Procesar';
+
+  renderFileList();
+}
+
+function renderStep4(phase) {
+  ['processingArea', 'resultArea', 'errorArea'].forEach(function(id) {
+    document.getElementById(id).classList.add('hidden');
+  });
+  var map = { processing: 'processingArea', result: 'resultArea', error: 'errorArea' };
+  if (map[phase]) document.getElementById(map[phase]).classList.remove('hidden');
+}
+
+function renderUI() {
+  renderStepper();
+  renderStepPanels();
+  renderModeCards();
+  if (state.step === 2) renderConfigPanel();
+  if (state.step === 3) renderStep3();
+}
+
+// =========================================================================
+// VALIDATE + BUILD OPTIONS
+// =========================================================================
+function validateConfig() {
+  var errors = [];
+  if (!state.applyWatermark && !state.applyPagination) {
+    errors.push('Selecciona al menos una salida: marca de agua o paginación.');
+  }
+  var needsReport = state.mode === 'final' || state.applyPagination || state.textOption === 'predefined';
+  if (needsReport && !state.reportNumber.trim()) {
+    errors.push('Por favor ingresa el número de informe.');
+  }
+  return errors;
+}
+
+function buildOptionsFromUI() {
+  var currentYear = new Date().getFullYear();
+  var text1, text2;
+  if (state.textOption === 'predefined') {
+    text1 = 'INFORME EJECUTIVA AMBIENTAL ' + currentYear;
+    text2 = state.reportNumber;
+  } else {
+    text1 = state.customText1 || 'MARCA DE AGUA';
+    text2 = state.customText2 || 'EJECUTIVA AMBIENTAL';
   }
 
-  // =========================================================================
-  // SHARED UTILITY FUNCTIONS
-  // =========================================================================
-  async function loadMontserratFont() {
-    const url = 'https://fonts.gstatic.com/s/montserrat/v25/JTUSjIg1_i6t8kCHKm459Wlhzg.ttf';
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('No se pudo descargar Montserrat');
-    return await res.arrayBuffer();
+  if (state.mode === 'marca' && state.addTimestamp && state.applyWatermark) {
+    var now = new Date();
+    var ts = now.toLocaleString('es-ES', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    text2 = text2 + ' | ' + ts;
   }
 
-  function generateQRCode(text, size) {
-    size = size || 150;
-    const qr = qrcode(0, 'M');
-    qr.addData(text);
-    qr.make();
-    const moduleCount = qr.getModuleCount();
-    const cellSize = size / moduleCount;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = '#000000';
-    for (let row = 0; row < moduleCount; row++) {
-      for (let col = 0; col < moduleCount; col++) {
-        if (qr.isDark(row, col)) {
-          ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
-        }
+  return {
+    textOption: state.textOption,
+    reportNumber: state.reportNumber,
+    text1: text1,
+    text2: text2,
+    density: state.density,
+    baseOpacity: parseFloat(state.opacity),
+    config: getDensityConfig(state.density),
+    shouldFlatten: state.flattenDoc,
+    flatScale: parseFloat(state.flattenScale),
+    flatQuality: parseFloat(state.flattenQuality),
+    multiLayerChecked: state.mode === 'marca' ? state.multiLayer : false,
+    pageFromVal: parseInt(state.pageFrom) || 1,
+    pageToVal: parseInt(state.pageTo) || 0,
+    enableWatermark: state.applyWatermark,
+    enablePagination: state.applyPagination,
+    includeCertificate: state.mode === 'final' ? state.includeCertificate : false
+  };
+}
+
+// =========================================================================
+// NAVIGATION
+// =========================================================================
+function goToStep(n) {
+  state.step = n;
+  renderUI();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// =========================================================================
+// FORM ↔ STATE SYNC
+// =========================================================================
+function syncFromForm() {
+  state.reportNumber = document.getElementById('reportNumber').value;
+  state.includeCertificate = document.getElementById('includeCertificate').checked;
+  state.applyWatermark = document.getElementById('applyWatermark').checked;
+  state.applyPagination = document.getElementById('applyPagination').checked;
+  var textOptionEl = document.querySelector('input[name="textOption"]:checked');
+  if (textOptionEl) state.textOption = textOptionEl.value;
+  state.customText1 = document.getElementById('customText1').value;
+  state.customText2 = document.getElementById('customText2').value;
+  state.pageFrom = document.getElementById('pageFrom').value;
+  state.pageTo = document.getElementById('pageTo').value;
+  state.density = document.getElementById('density').value;
+  state.opacity = document.getElementById('opacity').value;
+  state.addTimestamp = document.getElementById('addTimestamp').checked;
+  state.multiLayer = document.getElementById('multiLayer').checked;
+  state.flattenDoc = document.getElementById('flattenDoc').checked;
+  state.flattenScale = document.getElementById('flattenScale').value;
+  state.flattenQuality = document.getElementById('flattenQuality').value;
+}
+
+function syncToForm() {
+  document.getElementById('reportNumber').value = state.reportNumber;
+  document.getElementById('includeCertificate').checked = state.includeCertificate;
+  document.getElementById('applyWatermark').checked = state.applyWatermark;
+  document.getElementById('applyPagination').checked = state.applyPagination;
+  var radioEl = document.querySelector('input[name="textOption"][value="' + state.textOption + '"]');
+  if (radioEl) radioEl.checked = true;
+  document.getElementById('customText1').value = state.customText1;
+  document.getElementById('customText2').value = state.customText2;
+  document.getElementById('pageFrom').value = state.pageFrom;
+  document.getElementById('pageTo').value = state.pageTo;
+  document.getElementById('density').value = state.density;
+  document.getElementById('opacity').value = state.opacity;
+  document.getElementById('addTimestamp').checked = state.addTimestamp;
+  document.getElementById('multiLayer').checked = state.multiLayer;
+  document.getElementById('flattenDoc').checked = state.flattenDoc;
+  document.getElementById('flattenScale').value = state.flattenScale;
+  document.getElementById('flattenQuality').value = state.flattenQuality;
+}
+
+// =========================================================================
+// UTILITIES
+// =========================================================================
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function loadMontserratFont() {
+  var url = 'https://fonts.gstatic.com/s/montserrat/v25/JTUSjIg1_i6t8kCHKm459Wlhzg.ttf';
+  var res = await fetch(url);
+  if (!res.ok) throw new Error('No se pudo descargar Montserrat');
+  return await res.arrayBuffer();
+}
+
+function generateQRCode(text, size) {
+  size = size || 150;
+  var qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  var moduleCount = qr.getModuleCount();
+  var cellSize = size / moduleCount;
+  var canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#000000';
+  for (var row = 0; row < moduleCount; row++) {
+    for (var col = 0; col < moduleCount; col++) {
+      if (qr.isDark(row, col)) {
+        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
       }
     }
-    return canvas.toDataURL('image/png');
   }
+  return canvas.toDataURL('image/png');
+}
 
-  function getDensityConfig(density) {
-    if (density === 'baja') return { stepDiagonal: 200, stepAlongLine: 250 };
-    if (density === 'media') return { stepDiagonal: 140, stepAlongLine: 180 };
-    return { stepDiagonal: 100, stepAlongLine: 130 };
-  }
+function getDensityConfig(density) {
+  if (density === 'baja') return { stepDiagonal: 200, stepAlongLine: 250 };
+  if (density === 'media') return { stepDiagonal: 140, stepAlongLine: 180 };
+  return { stepDiagonal: 100, stepAlongLine: 130 };
+}
 
-  function showError(msg) {
-    secProc.style.display = 'none'; secUpload.style.display = 'none';
-    secRes.style.display = 'none'; secErr.style.display = 'block';
-    document.getElementById('errorMsg').textContent = msg;
-  }
+// =========================================================================
+// WATERMARK ENGINE
+// =========================================================================
+function drawLayer(page, p) {
+  var text1 = p.text1, text2 = p.text2, font = p.font, color = p.color,
+      size = p.size, lineGap = p.lineGap, radians = p.radians,
+      rotation = p.rotation, diagonal = p.diagonal, width = p.width,
+      height = p.height, spacing = p.spacing, alongSpacing = p.alongSpacing,
+      opacity = p.opacity, offsetD = p.offsetD;
 
-  function resetTool() {
-    secUpload.style.display = 'block'; secProc.style.display = 'none';
-    secRes.style.display = 'none'; secErr.style.display = 'none';
-    fileInput.value = '';
-    blobURLs.forEach(function(u) { URL.revokeObjectURL(u); });
-    blobURLs = [];
-    document.getElementById('resultsList').innerHTML = '';
-  }
-
-  // =========================================================================
-  // WATERMARK ENGINE
-  // =========================================================================
-  function drawLayer(page, p) {
-    const { text1, text2, font, color, size, lineGap, radians, rotation,
-            diagonal, width, height, spacing, alongSpacing, opacity, offsetD } = p;
-    for (let d = -diagonal; d < diagonal * 2; d += spacing) {
-      for (let pos = -diagonal; pos < diagonal * 2; pos += alongSpacing) {
-        const x = pos * Math.cos(radians) - (d + offsetD) * Math.sin(radians);
-        const y = pos * Math.sin(radians) + (d + offsetD) * Math.cos(radians);
-        if (x >= -100 && x <= width + 100 && y >= -100 && y <= height + 100) {
-          page.drawText(text1, {
-            x, y, size, font, color, opacity, rotate: PDFLib.degrees(rotation)
-          });
-          const ox = lineGap * Math.sin(radians);
-          const oy = -lineGap * Math.cos(radians);
-          page.drawText(text2, {
-            x: x + ox, y: y + oy, size, font, color, opacity, rotate: PDFLib.degrees(rotation)
-          });
-        }
+  for (var d = -diagonal; d < diagonal * 2; d += spacing) {
+    for (var pos = -diagonal; pos < diagonal * 2; pos += alongSpacing) {
+      var x = pos * Math.cos(radians) - (d + offsetD) * Math.sin(radians);
+      var y = pos * Math.sin(radians) + (d + offsetD) * Math.cos(radians);
+      if (x >= -100 && x <= width + 100 && y >= -100 && y <= height + 100) {
+        page.drawText(text1, { x: x, y: y, size: size, font: font, color: color, opacity: opacity, rotate: PDFLib.degrees(rotation) });
+        var ox = lineGap * Math.sin(radians);
+        var oy = -lineGap * Math.cos(radians);
+        page.drawText(text2, { x: x + ox, y: y + oy, size: size, font: font, color: color, opacity: opacity, rotate: PDFLib.degrees(rotation) });
       }
     }
   }
+}
 
-  function applyWatermark(page, opts) {
-    const { text1, text2, font, color, size, config, baseOpacity, layerMode, multiLayer } = opts;
-    const { width, height } = page.getSize();
-    const lineGap = size * 1.2;
-    const rotation = -45;
-    const radians = rotation * Math.PI / 180;
-    const diagonal = Math.sqrt(width * width + height * height);
-    const base = { text1, text2, font, color, size, lineGap, radians, rotation, diagonal, width, height };
+function applyWatermark(page, opts) {
+  var text1 = opts.text1, text2 = opts.text2, font = opts.font,
+      color = opts.color, size = opts.size, config = opts.config,
+      baseOpacity = opts.baseOpacity, layerMode = opts.layerMode,
+      multiLayer = opts.multiLayer;
+  var sz = page.getSize();
+  var width = sz.width, height = sz.height;
+  var lineGap = size * 1.2;
+  var rotation = -45;
+  var radians = rotation * Math.PI / 180;
+  var diagonal = Math.sqrt(width * width + height * height);
+  var base = {
+    text1: text1, text2: text2, font: font, color: color, size: size,
+    lineGap: lineGap, radians: radians, rotation: rotation,
+    diagonal: diagonal, width: width, height: height
+  };
 
-    if (layerMode === '3layer') {
-      // Capa 1: Visible
-      drawLayer(page, { ...base,
-        spacing: config.stepDiagonal * 2.5,
-        alongSpacing: config.stepAlongLine * 2,
-        opacity: baseOpacity,
-        offsetD: 0
-      });
-      // Capa 2: Semi-transparente
-      drawLayer(page, { ...base,
-        spacing: config.stepDiagonal * 1.8,
-        alongSpacing: config.stepAlongLine * 1.5,
-        opacity: baseOpacity * 0.3,
-        offsetD: (config.stepDiagonal * 1.8) / 2
-      });
-      // Capa 3: Casi invisible
-      drawLayer(page, { ...base,
-        spacing: config.stepDiagonal * 1.2,
-        alongSpacing: config.stepAlongLine * 1.2,
-        opacity: 0.03,
-        offsetD: 0
-      });
+  if (layerMode === '3layer') {
+    drawLayer(page, Object.assign({}, base, { spacing: config.stepDiagonal * 2.5, alongSpacing: config.stepAlongLine * 2, opacity: baseOpacity, offsetD: 0 }));
+    drawLayer(page, Object.assign({}, base, { spacing: config.stepDiagonal * 1.8, alongSpacing: config.stepAlongLine * 1.5, opacity: baseOpacity * 0.3, offsetD: (config.stepDiagonal * 1.8) / 2 }));
+    drawLayer(page, Object.assign({}, base, { spacing: config.stepDiagonal * 1.2, alongSpacing: config.stepAlongLine * 1.2, opacity: 0.03, offsetD: 0 }));
+  } else if (layerMode === 'cert') {
+    drawLayer(page, Object.assign({}, base, { spacing: config.stepDiagonal * 3, alongSpacing: config.stepAlongLine * 2.5, opacity: baseOpacity * 0.6, offsetD: 0 }));
+  } else if (layerMode === 'simple') {
+    var layers = multiLayer ? 2 : 1;
+    for (var layer = 0; layer < layers; layer++) {
+      drawLayer(page, Object.assign({}, base, {
+        spacing: config.stepDiagonal, alongSpacing: config.stepAlongLine,
+        opacity: layer === 0 ? baseOpacity : baseOpacity * 0.7,
+        offsetD: layer * (config.stepDiagonal / 2)
+      }));
+    }
+  }
+}
 
-    } else if (layerMode === 'cert') {
-      // Capa ligera para pagina de certificacion
-      drawLayer(page, { ...base,
-        spacing: config.stepDiagonal * 3,
-        alongSpacing: config.stepAlongLine * 2.5,
-        opacity: baseOpacity * 0.6,
-        offsetD: 0
-      });
+// =========================================================================
+// FLATTEN ENGINE
+// =========================================================================
+async function flattenPDF(pdfBytes, opts) {
+  var scale = (opts && opts.scale) || 3;
+  var quality = (opts && opts.quality) || 0.92;
+  var progressCallback = opts && opts.onProgress;
 
-    } else if (layerMode === 'simple') {
-      // Modo simple: 1 o 2 capas segun checkbox
-      const layers = multiLayer ? 2 : 1;
-      for (let layer = 0; layer < layers; layer++) {
-        drawLayer(page, { ...base,
-          spacing: config.stepDiagonal,
-          alongSpacing: config.stepAlongLine,
-          opacity: layer === 0 ? baseOpacity : baseOpacity * 0.7,
-          offsetD: layer * (config.stepDiagonal / 2)
-        });
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+  var pdfJsDoc = await loadingTask.promise;
+  var flatDoc = await PDFLib.PDFDocument.create();
+  var numPages = pdfJsDoc.numPages;
+
+  for (var i = 1; i <= numPages; i++) {
+    if (progressCallback) progressCallback(i, numPages);
+    var page = await pdfJsDoc.getPage(i);
+    var viewport = page.getViewport({ scale: scale });
+    var canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    var ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+    var imgDataUrl = canvas.toDataURL('image/jpeg', quality);
+    var imgBytes = await fetch(imgDataUrl).then(function(r) { return r.arrayBuffer(); });
+    var img = await flatDoc.embedJpg(imgBytes);
+    var origViewport = page.getViewport({ scale: 1 });
+    var newPage = flatDoc.addPage([origViewport.width, origViewport.height]);
+    newPage.drawImage(img, { x: 0, y: 0, width: origViewport.width, height: origViewport.height });
+  }
+  pdfJsDoc.destroy();
+  return flatDoc;
+}
+
+// =========================================================================
+// CERTIFICATION PAGE BUILDER
+// =========================================================================
+async function buildCertificationPage(certPage, pdfDoc, opts) {
+  var font = opts.font, fontBold = opts.fontBold,
+      reportNumber = opts.reportNumber, totalPages = opts.totalPages;
+  var sz = certPage.getSize();
+  var pgWidth = sz.width, pgHeight = sz.height;
+
+  certPage.drawRectangle({ x: 35, y: 35, width: pgWidth - 70, height: pgHeight - 70, borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 3 });
+  certPage.drawRectangle({ x: 45, y: 45, width: pgWidth - 90, height: pgHeight - 90, borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 1 });
+
+  certPage.drawText('EJECUTIVA AMBIENTAL', { x: pgWidth / 2 - 130, y: pgHeight - 80, size: 16, font: fontBold, color: PDFLib.rgb(0, 56/255, 0) });
+  certPage.drawText('Seguridad e higiene', { x: pgWidth / 2 - 85, y: pgHeight - 100, size: 10, font: font, color: PDFLib.rgb(0.3, 0.3, 0.3) });
+  certPage.drawLine({ start: { x: 70, y: pgHeight - 120 }, end: { x: pgWidth - 70, y: pgHeight - 120 }, thickness: 2, color: PDFLib.rgb(0, 56/255, 0) });
+
+  certPage.drawText('CERTIFICACION DE AUTENTICIDAD E INTEGRIDAD', { x: pgWidth / 2 - 220, y: pgHeight - 160, size: 16, font: fontBold, color: PDFLib.rgb(0, 0, 0) });
+
+  var yPos = pgHeight - 200;
+  certPage.drawText('El presente documento fue realizado, emitido y autorizado exclusivamente por Ejecutiva Ambiental', { x: 70, y: yPos, size: 11, font: font, color: PDFLib.rgb(0.15, 0.15, 0.15) });
+  yPos -= 27;
+  certPage.drawText('Este documento goza de presuncion de integridad unicamente en su totalidad, al contar con', { x: 70, y: yPos, size: 10, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+  yPos -= 15;
+  certPage.drawText(totalPages + ' paginas numeradas y protegidas mediante marca de agua digital. Cualquier alteracion,', { x: 70, y: yPos, size: 10, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+  yPos -= 15;
+  certPage.drawText('sustraccion o adicion de paginas invalida la autenticidad del documento completo.', { x: 70, y: yPos, size: 10, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+
+  yPos -= 20;
+  certPage.drawRectangle({ x: 65, y: yPos - 75, width: pgWidth - 130, height: 90, color: PDFLib.rgb(0.97, 0.98, 0.97), borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 1 });
+  certPage.drawText('INFORMACION DEL INFORME', { x: 75, y: yPos - 20, size: 10, font: fontBold, color: PDFLib.rgb(0, 86/255, 0) });
+  certPage.drawText('Numero de Informe: ' + reportNumber, { x: 75, y: yPos - 40, size: 10, font: font, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+
+  var today = new Date();
+  var dateStr = today.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+  certPage.drawText('Fecha de Emision: ' + dateStr, { x: 75, y: yPos - 60, size: 10, font: font, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+  certPage.drawText('Total de Paginas: ' + totalPages, { x: pgWidth / 2 + 20, y: yPos - 60, size: 10, font: font, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+
+  yPos -= 110;
+  certPage.drawText('ADVERTENCIA DE SEGURIDAD:', { x: 70, y: yPos, size: 9, font: fontBold, color: PDFLib.rgb(0.6, 0, 0) });
+  yPos -= 15;
+  certPage.drawText('Este documento contiene multiples capas de proteccion digital, incluyendo marcas de', { x: 70, y: yPos, size: 8, font: font, color: PDFLib.rgb(0.4, 0.4, 0.4) });
+  yPos -= 11;
+  certPage.drawText('agua visibles e invisibles. La reproduccion parcial o total sin autorizacion esta prohibida.', { x: 70, y: yPos, size: 8, font: font, color: PDFLib.rgb(0.4, 0.4, 0.4) });
+
+  yPos -= 20;
+  certPage.drawText('INFORMACION DE CONTACTO', { x: 70, y: yPos, size: 9, font: fontBold, color: PDFLib.rgb(0, 86/255, 0) });
+  yPos -= 18;
+  certPage.drawText('Telefono: 222 941 7295', { x: 70, y: yPos, size: 9, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+  yPos -= 15;
+  certPage.drawText('Web: www.ejecutivambiental.com', { x: 70, y: yPos, size: 9, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+
+  var qrDataUrl = generateQRCode('https://www.ejecutivambiental.com', 140);
+  var qrImageBytes = await fetch(qrDataUrl).then(function(res) { return res.arrayBuffer(); });
+  var qrImage = await pdfDoc.embedPng(qrImageBytes);
+  var qrSize = 140;
+  var qrX = pgWidth - 200;
+  var qrY = 120;
+  certPage.drawRectangle({ x: qrX - 5, y: qrY - 5, width: qrSize + 10, height: qrSize + 10, borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 2 });
+  certPage.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize });
+  certPage.drawText('Escanea para verificar', { x: qrX + 15, y: qrY - 20, size: 9, font: fontBold, color: PDFLib.rgb(0, 86/255, 0) });
+  certPage.drawText('autenticidad del documento', { x: qrX + 8, y: qrY - 33, size: 8, font: font, color: PDFLib.rgb(0.4, 0.4, 0.4) });
+
+  var signY = 85;
+  certPage.drawText('_____________________________________________________', { x: 70, y: signY, size: 10, font: font, color: PDFLib.rgb(0.6, 0.6, 0.6) });
+  certPage.drawText('SOLUCION EN INGENIERIA EJECUTIVA AMBIENTAL, S.A. DE C.V.', { x: 70, y: signY - 20, size: 9, font: fontBold, color: PDFLib.rgb(0, 86/255, 0) });
+  certPage.drawLine({ start: { x: 70, y: 50 }, end: { x: pgWidth - 70, y: 50 }, thickness: 1, color: PDFLib.rgb(0.8, 0.8, 0.8) });
+  certPage.drawText('Documento generado digitalmente - ' + dateStr, { x: pgWidth / 2 - 145, y: 32, size: 7, font: font, color: PDFLib.rgb(0.5, 0.5, 0.5) });
+}
+
+function addFooterPageCount(page, cfg) {
+  var currentPage = cfg.currentPage, totalPages = cfg.totalPages,
+      reportNumber = cfg.reportNumber, font = cfg.font;
+  var width = page.getWidth();
+  var footerText = 'Página ' + currentPage + ' de ' + totalPages + ', reconocida como parte del informe "' + reportNumber + '"';
+  var fontSize = 8;
+  var textWidth = font.widthOfTextAtSize(footerText, fontSize);
+  page.drawText(footerText, {
+    x: (width - textWidth) / 2, y: 18,
+    size: fontSize, font: font, color: PDFLib.rgb(0.35, 0.35, 0.35)
+  });
+}
+
+// =========================================================================
+// PROCESS SINGLE PDF
+// =========================================================================
+async function processSinglePDF(file, opts) {
+  var reportNumber = opts.reportNumber, text1 = opts.text1, text2 = opts.text2,
+      baseOpacity = opts.baseOpacity, config = opts.config,
+      shouldFlatten = opts.shouldFlatten, flatScale = opts.flatScale, flatQuality = opts.flatQuality,
+      multiLayerChecked = opts.multiLayerChecked, pageFromVal = opts.pageFromVal, pageToVal = opts.pageToVal,
+      enableWatermark = opts.enableWatermark, enablePagination = opts.enablePagination,
+      includeCertificate = opts.includeCertificate;
+
+  var bytes = await file.arrayBuffer();
+  var pdfDoc = await PDFLib.PDFDocument.load(bytes);
+
+  var font, fontBold;
+  try {
+    var mont = await loadMontserratFont();
+    font = await pdfDoc.embedFont(mont, { subset: true });
+    fontBold = font;
+  } catch (_) {
+    font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+    fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+  }
+
+  var color = PDFLib.rgb(0, 86/255, 0);
+  var size = 15;
+  var wmBase = { text1: text1, text2: text2, font: font, color: color, size: size, config: config, baseOpacity: baseOpacity };
+
+  var downloadName;
+
+  if (state.mode === 'final') {
+    var pages = pdfDoc.getPages();
+    if (enableWatermark) {
+      for (var i = 0; i < pages.length; i++) {
+        applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
       }
     }
-  }
-
-  // =========================================================================
-  // FLATTEN ENGINE (RASTERIZACION ANTI-EDICION)
-  // =========================================================================
-  async function flattenPDF(pdfBytes, opts) {
-    var scale = (opts && opts.scale) || 3;
-    var quality = (opts && opts.quality) || 0.92;
-    var progressCallback = opts && opts.onProgress;
-
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
-    const pdfJsDoc = await loadingTask.promise;
-    const flatDoc = await PDFLib.PDFDocument.create();
-
-    const numPages = pdfJsDoc.numPages;
-
-    for (let i = 1; i <= numPages; i++) {
-      if (progressCallback) progressCallback(i, numPages);
-
-      const page = await pdfJsDoc.getPage(i);
-      const viewport = page.getViewport({ scale: scale });
-
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
-
-      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
-      const imgDataUrl = canvas.toDataURL('image/jpeg', quality);
-      const imgBytes = await fetch(imgDataUrl).then(function(r) { return r.arrayBuffer(); });
-      const img = await flatDoc.embedJpg(imgBytes);
-
-      // Usar dimensiones originales de la pagina (puntos PDF a 72 DPI)
-      const origViewport = page.getViewport({ scale: 1 });
-      const newPage = flatDoc.addPage([origViewport.width, origViewport.height]);
-      newPage.drawImage(img, {
-        x: 0, y: 0,
-        width: origViewport.width,
-        height: origViewport.height
-      });
-    }
-
-    pdfJsDoc.destroy();
-    return flatDoc;
-  }
-
-  // =========================================================================
-  // CERTIFICATION PAGE BUILDER
-  // =========================================================================
-  async function buildCertificationPage(certPage, pdfDoc, opts) {
-    const { font, fontBold, reportNumber, totalPages } = opts;
-    const { width: pgWidth, height: pgHeight } = certPage.getSize();
-
-    // Doble borde elegante
-    certPage.drawRectangle({
-      x: 35, y: 35, width: pgWidth - 70, height: pgHeight - 70,
-      borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 3
-    });
-    certPage.drawRectangle({
-      x: 45, y: 45, width: pgWidth - 90, height: pgHeight - 90,
-      borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 1
-    });
-
-    // Encabezado
-    certPage.drawText('EJECUTIVA AMBIENTAL', {
-      x: pgWidth / 2 - 130, y: pgHeight - 80, size: 16,
-      font: fontBold, color: PDFLib.rgb(0, 56/255, 0)
-    });
-    certPage.drawText('Seguridad e higiene', {
-      x: pgWidth / 2 - 85, y: pgHeight - 100, size: 10,
-      font: font, color: PDFLib.rgb(0.3, 0.3, 0.3)
-    });
-
-    // Linea decorativa superior
-    certPage.drawLine({
-      start: { x: 70, y: pgHeight - 120 },
-      end: { x: pgWidth - 70, y: pgHeight - 120 },
-      thickness: 2, color: PDFLib.rgb(0, 56/255, 0)
-    });
-
-    // Titulo principal
-    certPage.drawText('CERTIFICACION DE AUTENTICIDAD E INTEGRIDAD', {
-      x: pgWidth / 2 - 220, y: pgHeight - 160, size: 16,
-      font: fontBold, color: PDFLib.rgb(0, 0, 0)
-    });
-
-    // Texto de certificacion
-    let yPos = pgHeight - 200;
-    certPage.drawText('El presente documento fue realizado, emitido y autorizado exclusivamente por Ejecutiva Ambiental', {
-      x: 70, y: yPos, size: 11, font: font,
-      color: PDFLib.rgb(0.15, 0.15, 0.15)
-    });
-
-    yPos -= 27;
-    certPage.drawText('Este documento goza de presuncion de integridad unicamente en su totalidad, al contar con', {
-      x: 70, y: yPos, size: 10, font: font,
-      color: PDFLib.rgb(0.2, 0.2, 0.2)
-    });
-    yPos -= 15;
-    certPage.drawText(totalPages + ' paginas numeradas y protegidas mediante marca de agua digital. Cualquier alteracion,', {
-      x: 70, y: yPos, size: 10, font: font,
-      color: PDFLib.rgb(0.2, 0.2, 0.2)
-    });
-    yPos -= 15;
-    certPage.drawText('sustraccion o adicion de paginas invalida la autenticidad del documento completo.', {
-      x: 70, y: yPos, size: 10, font: font,
-      color: PDFLib.rgb(0.2, 0.2, 0.2)
-    });
-
-    // Caja de informacion del informe
-    yPos -= 20;
-    certPage.drawRectangle({
-      x: 65, y: yPos - 75, width: pgWidth - 130, height: 90,
-      color: PDFLib.rgb(0.97, 0.98, 0.97),
-      borderColor: PDFLib.rgb(0, 86/255, 0),
-      borderWidth: 1
-    });
-
-    certPage.drawText('INFORMACION DEL INFORME', {
-      x: 75, y: yPos - 20, size: 10, font: fontBold,
-      color: PDFLib.rgb(0, 86/255, 0)
-    });
-
-    certPage.drawText('Numero de Informe: ' + reportNumber, {
-      x: 75, y: yPos - 40, size: 10, font: font,
-      color: PDFLib.rgb(0.1, 0.1, 0.1)
-    });
-
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('es-ES', {
-      day: '2-digit', month: 'long', year: 'numeric'
-    });
-    certPage.drawText('Fecha de Emision: ' + dateStr, {
-      x: 75, y: yPos - 60, size: 10, font: font,
-      color: PDFLib.rgb(0.1, 0.1, 0.1)
-    });
-
-    certPage.drawText('Total de Paginas: ' + totalPages, {
-      x: pgWidth / 2 + 20, y: yPos - 60, size: 10, font: font,
-      color: PDFLib.rgb(0.1, 0.1, 0.1)
-    });
-
-    // Advertencia de seguridad
-    yPos -= 110;
-    certPage.drawText('ADVERTENCIA DE SEGURIDAD:', {
-      x: 70, y: yPos, size: 9, font: fontBold,
-      color: PDFLib.rgb(0.6, 0, 0)
-    });
-    yPos -= 15;
-    certPage.drawText('Este documento contiene multiples capas de proteccion digital, incluyendo marcas de', {
-      x: 70, y: yPos, size: 8, font: font,
-      color: PDFLib.rgb(0.4, 0.4, 0.4)
-    });
-    yPos -= 11;
-    certPage.drawText('agua visibles e invisibles. La reproduccion parcial o total sin autorizacion esta prohibida.', {
-      x: 70, y: yPos, size: 8, font: font,
-      color: PDFLib.rgb(0.4, 0.4, 0.4)
-    });
-
-    // Informacion de contacto
-    yPos -= 20;
-    certPage.drawText('INFORMACION DE CONTACTO', {
-      x: 70, y: yPos, size: 9, font: fontBold,
-      color: PDFLib.rgb(0, 86/255, 0)
-    });
-    yPos -= 18;
-    certPage.drawText('Telefono: 222 941 7295', {
-      x: 70, y: yPos, size: 9, font: font,
-      color: PDFLib.rgb(0.2, 0.2, 0.2)
-    });
-    yPos -= 15;
-    certPage.drawText('Web: www.ejecutivambiental.com', {
-      x: 70, y: yPos, size: 9, font: font,
-      color: PDFLib.rgb(0.2, 0.2, 0.2)
-    });
-
-    // QR Code
-    const qrDataUrl = generateQRCode('https://www.ejecutivambiental.com', 140);
-    const qrImageBytes = await fetch(qrDataUrl).then(function(res) { return res.arrayBuffer(); });
-    const qrImage = await pdfDoc.embedPng(qrImageBytes);
-
-    const qrSize = 140;
-    const qrX = pgWidth - 200;
-    const qrY = 120;
-
-    certPage.drawRectangle({
-      x: qrX - 5, y: qrY - 5, width: qrSize + 10, height: qrSize + 10,
-      borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 2
-    });
-
-    certPage.drawImage(qrImage, {
-      x: qrX, y: qrY, width: qrSize, height: qrSize
-    });
-
-    certPage.drawText('Escanea para verificar', {
-      x: qrX + 15, y: qrY - 20, size: 9, font: fontBold,
-      color: PDFLib.rgb(0, 86/255, 0)
-    });
-    certPage.drawText('autenticidad del documento', {
-      x: qrX + 8, y: qrY - 33, size: 8, font: font,
-      color: PDFLib.rgb(0.4, 0.4, 0.4)
-    });
-
-    // Linea de firma
-    const signY = 85;
-    certPage.drawText('_____________________________________________________', {
-      x: 70, y: signY, size: 10, font: font,
-      color: PDFLib.rgb(0.6, 0.6, 0.6)
-    });
-    certPage.drawText('SOLUCION EN INGENIERIA EJECUTIVA AMBIENTAL, S.A. DE C.V.', {
-      x: 70, y: signY - 20, size: 9, font: fontBold,
-      color: PDFLib.rgb(0, 86/255, 0)
-    });
-
-    // Pie de pagina
-    certPage.drawLine({
-      start: { x: 70, y: 50 },
-      end: { x: pgWidth - 70, y: 50 },
-      thickness: 1, color: PDFLib.rgb(0.8, 0.8, 0.8)
-    });
-    certPage.drawText('Documento generado digitalmente - ' + dateStr, {
-      x: pgWidth / 2 - 145, y: 32, size: 7, font: font,
-      color: PDFLib.rgb(0.5, 0.5, 0.5)
-    });
-  }
-
-  function addFooterPageCount(page, cfg) {
-    const { currentPage, totalPages, reportNumber, font } = cfg;
-    const width = page.getWidth();
-    const footerText = 'Página ' + currentPage + ' de ' + totalPages + ', reconocida como parte del informe "' + reportNumber + '"';
-    const fontSize = 8;
-    const textWidth = font.widthOfTextAtSize(footerText, fontSize);
-
-    page.drawText(footerText, {
-      x: (width - textWidth) / 2,
-      y: 18,
-      size: fontSize,
-      font: font,
-      color: PDFLib.rgb(0.35, 0.35, 0.35)
-    });
-  }
-
-  // =========================================================================
-  // PROCESS SINGLE PDF (returns result object)
-  // =========================================================================
-  async function processSinglePDF(file, opts) {
-    const { textOption, reportNumber, text1: baseText1, text2: baseText2,
-            density, baseOpacity, config, shouldFlatten, flatScale, flatQuality,
-            multiLayerChecked, pageFromVal, pageToVal,
-            enableWatermark, enablePagination, includeCertificate } = opts;
-
-    const bytes = await file.arrayBuffer();
-    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
-
-    // Cargar fuente
-    let font, fontBold;
-    try {
-      const mont = await loadMontserratFont();
-      font = await pdfDoc.embedFont(mont, { subset: true });
-      fontBold = font;
-    } catch (_) {
-      font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-      fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-    }
-
-    const color = PDFLib.rgb(0, 86/255, 0);
-    const size = 15;
-    const wmBase = { text1: baseText1, text2: baseText2, font, color, size, config, baseOpacity };
-
-    let downloadName;
-
-    if (currentMode === 'final') {
-      const pages = pdfDoc.getPages();
+    if (includeCertificate) {
+      var totalPages = pages.length;
+      var certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
+      await buildCertificationPage(certPage, pdfDoc, { font: font, fontBold: fontBold, reportNumber: reportNumber, totalPages: totalPages });
       if (enableWatermark) {
-        for (const page of pages) {
-          applyWatermark(page, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
-        }
+        applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
       }
-
-      if (includeCertificate) {
-        const totalPages = pages.length;
-        const certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
-        await buildCertificationPage(certPage, pdfDoc, { font, fontBold, reportNumber, totalPages });
-        if (enableWatermark) {
-          applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
-        }
+    }
+    if (enablePagination) {
+      var finalPages = pdfDoc.getPages();
+      var certPageIndex = includeCertificate ? 1 : -1;
+      var numberedTotal = includeCertificate ? finalPages.length - 1 : finalPages.length;
+      var numberedPage = 0;
+      for (var j = 0; j < finalPages.length; j++) {
+        if (j === certPageIndex) continue;
+        numberedPage++;
+        addFooterPageCount(finalPages[j], { currentPage: numberedPage, totalPages: numberedTotal, reportNumber: reportNumber, font: font });
       }
+    }
+    pdfDoc.setTitle('Informe Final Digital ' + reportNumber);
+    pdfDoc.setAuthor('Ejecutiva Ambiental');
+    pdfDoc.setSubject('Informe certificado - ' + reportNumber);
+    pdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
+    pdfDoc.setProducer('Sistema de Certificacion Digital SEA');
+    pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
+    downloadName = file.name;
 
+  } else {
+    var pages2 = pdfDoc.getPages();
+    var totalPageCount = pages2.length;
+    var pageFrom = Math.max(1, Math.min(pageFromVal, totalPageCount));
+    var pageTo = Math.max(pageFrom, Math.min(pageToVal || totalPageCount, totalPageCount));
+    for (var k = pageFrom - 1; k < pageTo; k++) {
+      if (enableWatermark) {
+        applyWatermark(pages2[k], Object.assign({}, wmBase, { layerMode: 'simple', multiLayer: multiLayerChecked }));
+      }
       if (enablePagination) {
-        const finalPages = pdfDoc.getPages();
-        const certPageIndex = includeCertificate ? 1 : -1;
-        const numberedTotal = includeCertificate ? finalPages.length - 1 : finalPages.length;
-        let numberedPage = 0;
-
-        for (let i = 0; i < finalPages.length; i++) {
-          if (i === certPageIndex) continue;
-          numberedPage += 1;
-          addFooterPageCount(finalPages[i], {
-            currentPage: numberedPage,
-            totalPages: numberedTotal,
-            reportNumber: reportNumber,
-            font: font
-          });
-        }
+        addFooterPageCount(pages2[k], { currentPage: k + 1, totalPages: totalPageCount, reportNumber: reportNumber || 'N/A', font: font });
       }
+    }
+    pdfDoc.setTitle('Documento Protegido con Marca de Agua');
+    pdfDoc.setAuthor('Sistema de Proteccion SEA');
+    pdfDoc.setSubject('Documento con marca de agua de seguridad');
+    pdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
+    pdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
+    pdfDoc.setCreator('Herramienta de Proteccion Documental');
+    downloadName = 'Preliminar - ' + file.name;
+  }
 
-      pdfDoc.setTitle('Informe Final Digital ' + reportNumber);
-      pdfDoc.setAuthor('Ejecutiva Ambiental');
-      pdfDoc.setSubject('Informe certificado - ' + reportNumber);
-      pdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
-      pdfDoc.setProducer('Sistema de Certificacion Digital SEA');
-      pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-      downloadName = file.name;
-
+  var finalPdfDoc = pdfDoc;
+  if (shouldFlatten) {
+    document.getElementById('processingNote').textContent = 'Aplanando "' + file.name + '"...';
+    var intermediateBytes = await pdfDoc.save();
+    finalPdfDoc = await flattenPDF(intermediateBytes, {
+      scale: flatScale, quality: flatQuality,
+      onProgress: function(current, total) {
+        document.getElementById('processingNote').textContent =
+          'Aplanando "' + file.name + '" – pág. ' + current + ' de ' + total + '...';
+      }
+    });
+    if (state.mode === 'final') {
+      finalPdfDoc.setTitle('Informe Final Digital ' + reportNumber);
+      finalPdfDoc.setAuthor('Ejecutiva Ambiental');
+      finalPdfDoc.setSubject('Informe certificado - ' + reportNumber);
+      finalPdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
+      finalPdfDoc.setProducer('Sistema de Certificacion Digital SEA');
+      finalPdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
     } else {
-      const pages = pdfDoc.getPages();
-      const totalPageCount = pages.length;
-      const pageFrom = Math.max(1, Math.min(pageFromVal, totalPageCount));
-      const pageTo = Math.max(pageFrom, Math.min(pageToVal || totalPageCount, totalPageCount));
-
-      for (let i = pageFrom - 1; i < pageTo; i++) {
-        if (enableWatermark) {
-          applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: 'simple', multiLayer: multiLayerChecked }));
-        }
-        if (enablePagination) {
-          addFooterPageCount(pages[i], {
-            currentPage: i + 1,
-            totalPages: totalPageCount,
-            reportNumber: reportNumber || 'N/A',
-            font: font
-          });
-        }
-      }
-
-      pdfDoc.setTitle('Documento Protegido con Marca de Agua');
-      pdfDoc.setAuthor('Sistema de Proteccion SEA');
-      pdfDoc.setSubject('Documento con marca de agua de seguridad');
-      pdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
-      pdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
-      pdfDoc.setCreator('Herramienta de Proteccion Documental');
-      downloadName = 'Preliminar - ' + file.name;
-    }
-
-    // Aplanamiento
-    let finalPdfDoc = pdfDoc;
-    if (shouldFlatten) {
-      document.querySelector('#processing .note').textContent =
-        'Aplanando "' + file.name + '"...';
-      const intermediateBytes = await pdfDoc.save();
-      finalPdfDoc = await flattenPDF(intermediateBytes, {
-        scale: flatScale,
-        quality: flatQuality,
-        onProgress: function(current, total) {
-          document.querySelector('#processing .note').textContent =
-            'Aplanando "' + file.name + '" - pagina ' + current + ' de ' + total + '...';
-        }
-      });
-
-      if (currentMode === 'final') {
-        finalPdfDoc.setTitle('Informe Final Digital ' + reportNumber);
-        finalPdfDoc.setAuthor('Ejecutiva Ambiental');
-        finalPdfDoc.setSubject('Informe certificado - ' + reportNumber);
-        finalPdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
-        finalPdfDoc.setProducer('Sistema de Certificacion Digital SEA');
-        finalPdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-      } else {
-        finalPdfDoc.setTitle('Documento Protegido con Marca de Agua');
-        finalPdfDoc.setAuthor('Sistema de Proteccion SEA');
-        finalPdfDoc.setSubject('Documento con marca de agua de seguridad');
-        finalPdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
-        finalPdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
-        finalPdfDoc.setCreator('Herramienta de Proteccion Documental');
-      }
-    }
-
-    const creationDate = new Date();
-    finalPdfDoc.setCreationDate(creationDate);
-    finalPdfDoc.setModificationDate(creationDate);
-
-    const out = await finalPdfDoc.save();
-    const blob = new Blob([out], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    blobURLs.push(url);
-
-    return { downloadName, url, sizeMB: (blob.size / (1024 * 1024)).toFixed(2) };
-  }
-
-  // =========================================================================
-  // PROCESS MULTIPLE PDFs
-  // =========================================================================
-  async function processMultiplePDFs(files) {
-    // Validaciones
-    const textOption = document.querySelector('input[name="textOption"]:checked').value;
-    const reportNumber = document.getElementById('reportNumber').value.trim();
-
-    const enableWatermark = document.getElementById('applyWatermark').checked;
-    const enablePagination = document.getElementById('applyPagination').checked;
-    const includeCertificate = document.getElementById('includeCertificate').checked;
-
-    if (!enableWatermark && !enablePagination) {
-      showError('Selecciona al menos una salida: marca de agua o paginación.');
-      return;
-    }
-
-    if ((currentMode === 'final' || enablePagination || textOption === 'predefined') && !reportNumber) {
-      showError('Por favor ingresa el numero de informe.');
-      return;
-    }
-
-    try {
-      secUpload.style.display = 'none'; secErr.style.display = 'none';
-      secRes.style.display = 'none'; secProc.style.display = 'block';
-
-      // Resolver textos de marca de agua
-      const currentYear = new Date().getFullYear();
-      let text1, text2;
-      if (textOption === 'predefined') {
-        text1 = 'INFORME EJECUTIVA AMBIENTAL ' + currentYear;
-        text2 = reportNumber;
-      } else {
-        text1 = document.getElementById('customText1').value || 'MARCA DE AGUA';
-        text2 = document.getElementById('customText2').value || 'EJECUTIVA AMBIENTAL';
-      }
-
-      if (currentMode === 'marca') {
-        const addTimestamp = document.getElementById('addTimestamp').checked;
-        if (addTimestamp) {
-          const now = new Date();
-          const ts = now.toLocaleString('es-ES', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-          });
-          text2 = text2 + ' | ' + ts;
-        }
-      }
-
-      const density = document.getElementById('density').value;
-      const baseOpacity = parseFloat(document.getElementById('opacity').value);
-      const config = getDensityConfig(density);
-      const shouldFlatten = document.getElementById('flattenDoc').checked;
-      const flatScale = parseFloat(document.getElementById('flattenScale').value);
-      const flatQuality = parseFloat(document.getElementById('flattenQuality').value);
-      const multiLayerChecked = currentMode === 'marca' ? document.getElementById('multiLayer').checked : false;
-      const pageFromVal = parseInt(document.getElementById('pageFrom').value) || 1;
-      const pageToVal = parseInt(document.getElementById('pageTo').value) || 0;
-
-      const opts = {
-        textOption, reportNumber, text1, text2: text2,
-        density, baseOpacity, config, shouldFlatten, flatScale, flatQuality,
-        multiLayerChecked, pageFromVal, pageToVal,
-        enableWatermark, enablePagination, includeCertificate
-      };
-
-      const results = [];
-      const resultsList = document.getElementById('resultsList');
-      resultsList.innerHTML = '';
-
-      for (let i = 0; i < files.length; i++) {
-        var fileLabel = files.length > 1
-          ? 'Procesando documento ' + (i + 1) + ' de ' + files.length + ': ' + files[i].name
-          : 'Procesando documento: ' + files[i].name;
-        document.getElementById('processingTitle').textContent = fileLabel;
-        document.querySelector('#processing .note').textContent = 'Aplicando marcas de agua...';
-
-        var result = await processSinglePDF(files[i], opts);
-        results.push(result);
-      }
-
-      // Construir lista de resultados
-      for (let i = 0; i < results.length; i++) {
-        var item = document.createElement('div');
-        item.className = 'file-result-item';
-        item.innerHTML =
-          '<div class="file-info">' +
-            '<div class="file-name">' + results[i].downloadName + '</div>' +
-            '<div class="file-size">Tamano: ' + results[i].sizeMB + ' MB</div>' +
-          '</div>' +
-          '<a class="btn" href="' + results[i].url + '" download="' + results[i].downloadName + '" style="text-decoration:none">' +
-            'Descargar' +
-          '</a>';
-        resultsList.appendChild(item);
-      }
-
-      secProc.style.display = 'none'; secRes.style.display = 'block';
-
-    } catch (err) {
-      console.error('Error detallado:', err);
-      showError('Error al procesar: ' + (err.message || 'Error desconocido'));
+      finalPdfDoc.setTitle('Documento Protegido con Marca de Agua');
+      finalPdfDoc.setAuthor('Sistema de Proteccion SEA');
+      finalPdfDoc.setSubject('Documento con marca de agua de seguridad');
+      finalPdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
+      finalPdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
+      finalPdfDoc.setCreator('Herramienta de Proteccion Documental');
     }
   }
 
-  // =========================================================================
-  // EVENT WIRING
-  // =========================================================================
-  document.getElementById('dropZone').addEventListener('dragover', function(e) { e.preventDefault(); });
-  document.getElementById('dropZone').addEventListener('drop', function(e) {
+  var creationDate = new Date();
+  finalPdfDoc.setCreationDate(creationDate);
+  finalPdfDoc.setModificationDate(creationDate);
+
+  var out = await finalPdfDoc.save();
+  var blob = new Blob([out], { type: 'application/pdf' });
+  var url = URL.createObjectURL(blob);
+  state.blobURLs.push(url);
+
+  return { downloadName: downloadName, url: url, sizeMB: (blob.size / (1024 * 1024)).toFixed(2) };
+}
+
+// =========================================================================
+// PROCESS ALL
+// =========================================================================
+async function processFiles() {
+  var errors = validateConfig();
+  if (errors.length > 0) return;
+  var files = state.selectedFiles;
+  if (!files || files.length === 0) return;
+
+  goToStep(4);
+  renderStep4('processing');
+
+  try {
+    var opts = buildOptionsFromUI();
+    var results = [];
+
+    for (var i = 0; i < files.length; i++) {
+      var label = files.length > 1
+        ? 'Procesando ' + (i + 1) + ' de ' + files.length + ': ' + files[i].name
+        : 'Procesando: ' + files[i].name;
+      document.getElementById('processingTitle').textContent = label;
+      document.getElementById('processingNote').textContent = 'Aplicando marca de agua...';
+      results.push(await processSinglePDF(files[i], opts));
+    }
+
+    var resultsList = document.getElementById('resultsList');
+    resultsList.innerHTML = '';
+    for (var j = 0; j < results.length; j++) {
+      var item = document.createElement('div');
+      item.className = 'result-item';
+      item.innerHTML =
+        '<div class="r-info">' +
+          '<div class="r-name">' + escHtml(results[j].downloadName) + '</div>' +
+          '<div class="r-size">Tamaño: ' + results[j].sizeMB + ' MB</div>' +
+        '</div>' +
+        '<a class="btn" href="' + results[j].url + '" download="' + escHtml(results[j].downloadName) + '">Descargar</a>';
+      resultsList.appendChild(item);
+    }
+    renderStep4('result');
+
+  } catch (err) {
+    console.error('Error:', err);
+    document.getElementById('errorMsg').textContent = 'Error al procesar: ' + (err.message || 'Error desconocido');
+    renderStep4('error');
+  }
+}
+
+function clearResults() {
+  state.blobURLs.forEach(function(u) { URL.revokeObjectURL(u); });
+  state.blobURLs = [];
+  document.getElementById('resultsList').innerHTML = '';
+}
+
+// =========================================================================
+// EVENT LISTENERS
+// =========================================================================
+function bindEvents() {
+
+  // Step 1: mode cards
+  document.getElementById('cardFinal').addEventListener('click', function() {
+    state.mode = 'final';
+    renderModeCards();
+  });
+  document.getElementById('cardMarca').addEventListener('click', function() {
+    state.mode = 'marca';
+    renderModeCards();
+  });
+  document.getElementById('btnStep1Next').addEventListener('click', function() {
+    syncToForm();
+    goToStep(2);
+  });
+
+  // Step 2: sync any change → state → re-render visibility
+  document.querySelectorAll('#step2 input, #step2 select').forEach(function(el) {
+    var eventName = (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio')
+      ? 'change' : 'input';
+    el.addEventListener(eventName, function() {
+      syncFromForm();
+      renderConfigPanel();
+    });
+  });
+
+  // Advanced accordion
+  document.getElementById('advancedToggle').addEventListener('click', function() {
+    state.advancedOpen = !state.advancedOpen;
+    renderConfigPanel();
+  });
+
+  document.getElementById('btnStep2Back').addEventListener('click', function() { goToStep(1); });
+  document.getElementById('btnStep2Next').addEventListener('click', function() { goToStep(3); });
+
+  // Step 3: file selection
+  document.getElementById('btnSelectFiles').addEventListener('click', function() {
+    document.getElementById('fileInput').click();
+  });
+  document.getElementById('fileInput').addEventListener('change', function(e) {
+    var files = Array.from(e.target.files).filter(function(f) { return f.type === 'application/pdf'; });
+    files.forEach(function(f) { state.selectedFiles.push(f); });
+    e.target.value = '';
+    renderUI();
+  });
+
+  // Drag and drop
+  var dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', function(e) {
     e.preventDefault();
-    var files = e.dataTransfer.files;
-    if (!files || files.length === 0) return;
-    var pdfFiles = [];
-    for (var i = 0; i < files.length; i++) {
-      if (files[i].type === 'application/pdf') pdfFiles.push(files[i]);
-    }
-    if (pdfFiles.length === 0) { showError('Selecciona archivos PDF validos.'); return; }
-    processMultiplePDFs(pdfFiles);
+    dz.classList.add('drag-over');
   });
-  fileInput.addEventListener('change', function(e) {
-    var files = e.target.files;
-    if (!files || files.length === 0) return;
-    var pdfFiles = [];
-    for (var i = 0; i < files.length; i++) {
-      if (files[i].type === 'application/pdf') pdfFiles.push(files[i]);
-    }
-    if (pdfFiles.length === 0) { showError('Selecciona archivos PDF validos.'); return; }
-    processMultiplePDFs(pdfFiles);
+  dz.addEventListener('dragleave', function(e) {
+    if (!dz.contains(e.relatedTarget)) dz.classList.remove('drag-over');
+  });
+  dz.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    var files = Array.from(e.dataTransfer.files).filter(function(f) { return f.type === 'application/pdf'; });
+    if (files.length === 0) return;
+    files.forEach(function(f) { state.selectedFiles.push(f); });
+    renderUI();
   });
 
-  // Initialize with Mode 1 active
-  setMode('final');
+  document.getElementById('btnStep3Back').addEventListener('click', function() { goToStep(2); });
+  document.getElementById('btnProcess').addEventListener('click', processFiles);
+
+  // Step 4: results navigation
+  document.getElementById('btnNewConfig').addEventListener('click', function() {
+    clearResults();
+    state.selectedFiles = [];
+    goToStep(1);
+  });
+  document.getElementById('btnMoreFiles').addEventListener('click', function() {
+    clearResults();
+    state.selectedFiles = [];
+    goToStep(3);
+  });
+  document.getElementById('btnErrorBack').addEventListener('click', function() { goToStep(3); });
+}
+
+// =========================================================================
+// INIT
+// =========================================================================
+syncToForm();
+bindEvents();
+renderUI();
 </script>
 </body>
 </html>
