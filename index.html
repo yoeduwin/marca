@@ -1046,16 +1046,44 @@ async function buildCertificationPage(certPage, pdfDoc, opts) {
   yPos -= 15;
   certPage.drawText('Web: www.ejecutivambiental.com', { x: 70, y: yPos, size: 9, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
 
-  var qrDataUrl = generateQRCode('https://www.ejecutivambiental.com', 140);
-  var qrImageBytes = await fetch(qrDataUrl).then(function(res) { return res.arrayBuffer(); });
-  var qrImage = await pdfDoc.embedPng(qrImageBytes);
-  var qrSize = 140;
-  var qrX = pgWidth - 200;
-  var qrY = 120;
-  certPage.drawRectangle({ x: qrX - 5, y: qrY - 5, width: qrSize + 10, height: qrSize + 10, borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 2 });
-  certPage.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize });
-  certPage.drawText('Escanea para verificar', { x: qrX + 15, y: qrY - 20, size: 9, font: fontBold, color: PDFLib.rgb(0, 86/255, 0) });
-  certPage.drawText('autenticidad del documento', { x: qrX + 8, y: qrY - 33, size: 8, font: font, color: PDFLib.rgb(0.4, 0.4, 0.4) });
+  // --- QR 1: sitio web (verificación) ---
+  var qrSize = 100;
+  var qrPad = 5;
+  // Dos QRs lado a lado en la zona inferior derecha
+  // QR1 borde izquierdo: pgWidth - 277 = 335; QR2 borde derecho: 335+110+6+110 = 561 (< borde interno 567)
+  var qr1X = pgWidth - 272;  // 340 — posición imagen QR1
+  var qr1Y = 148;
+  var qr2X = qr1X + qrSize + qrPad * 2 + 6;  // 340+100+10+6 = 456 — posición imagen QR2
+  var qr2Y = 148;
+
+  var qrWebDataUrl = generateQRCode('https://www.ejecutivambiental.com', 200);
+  var qrWebBytes = await fetch(qrWebDataUrl).then(function(res) { return res.arrayBuffer(); });
+  var qrWebImage = await pdfDoc.embedPng(qrWebBytes);
+
+  // QR 2: datos del informe (texto plano, sin acentos para máxima compatibilidad de lectores)
+  var qr2Text = 'Informe numero ' + reportNumber +
+    ' emitido por Solucion en Ingenieria Ejecutiva Ambiental.' +
+    ' Si tiene dudas sobre la integridad por favor llame al 2229417295.';
+  var qrDataDataUrl = generateQRCode(qr2Text, 200);
+  var qrDataBytes = await fetch(qrDataDataUrl).then(function(res) { return res.arrayBuffer(); });
+  var qrDataImage = await pdfDoc.embedPng(qrDataBytes);
+
+  var green = PDFLib.rgb(0, 86/255, 0);
+  var gray = PDFLib.rgb(0.4, 0.4, 0.4);
+
+  // Borde y imagen QR1
+  certPage.drawRectangle({ x: qr1X - qrPad, y: qr1Y - qrPad, width: qrSize + qrPad * 2, height: qrSize + qrPad * 2, borderColor: green, borderWidth: 2 });
+  certPage.drawImage(qrWebImage, { x: qr1X, y: qr1Y, width: qrSize, height: qrSize });
+  // Etiqueta QR1 (dos líneas bajo el borde)
+  certPage.drawText('Escanea para verificar', { x: qr1X - 1, y: qr1Y - 14, size: 7, font: fontBold, color: green });
+  certPage.drawText('autenticidad del doc.', { x: qr1X + 1, y: qr1Y - 24, size: 6.5, font: font, color: gray });
+
+  // Borde y imagen QR2
+  certPage.drawRectangle({ x: qr2X - qrPad, y: qr2Y - qrPad, width: qrSize + qrPad * 2, height: qrSize + qrPad * 2, borderColor: green, borderWidth: 2 });
+  certPage.drawImage(qrDataImage, { x: qr2X, y: qr2Y, width: qrSize, height: qrSize });
+  // Etiqueta QR2 (dos líneas bajo el borde)
+  certPage.drawText('Escanea para ver', { x: qr2X + 4, y: qr2Y - 14, size: 7, font: fontBold, color: green });
+  certPage.drawText('datos del informe', { x: qr2X + 3, y: qr2Y - 24, size: 6.5, font: font, color: gray });
 
   var signY = 85;
   certPage.drawText('_____________________________________________________', { x: 70, y: signY, size: 10, font: font, color: PDFLib.rgb(0.6, 0.6, 0.6) });
