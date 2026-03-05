@@ -1065,6 +1065,15 @@ async function buildCertificationPage(certPage, pdfDoc, opts) {
   var qr2Text = 'Informe numero ' + reportNumber +
     ' emitido por Solucion en Ingenieria Ejecutiva Ambiental.' +
     ' Si tiene dudas sobre la integridad por favor llame al 2229417295.';
+
+// Reemplaza la variable qr2Text actual por esta:
+var qr2Text = 'DATOS DEL INFORME\n' +
+  '-------------------\n' +
+  'Folio: ' + reportNumber + '\n' +
+  'Emite: Solucion en Ingenieria Ejecutiva Ambiental.\n' +
+  ''Tel. de contacto: 222 941 72 95'
+
+  
   // Canvas 400px + corrección 'L' (menos redundancia → versión QR más baja → módulos más grandes y escaneables)
   var qrDataDataUrl = generateQRCode(qr2Text, 400, 'L');
   var qrDataBytes = await fetch(qrDataDataUrl).then(function(res) { return res.arrayBuffer(); });
