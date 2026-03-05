@@ -871,9 +871,10 @@ async function loadMontserratFont() {
   return await res.arrayBuffer();
 }
 
-function generateQRCode(text, size) {
+function generateQRCode(text, size, ecLevel) {
   size = size || 150;
-  var qr = qrcode(0, 'M');
+  ecLevel = ecLevel || 'M';
+  var qr = qrcode(0, ecLevel);
   qr.addData(text);
   qr.make();
   var moduleCount = qr.getModuleCount();
@@ -1064,7 +1065,8 @@ async function buildCertificationPage(certPage, pdfDoc, opts) {
   var qr2Text = 'Informe numero ' + reportNumber +
     ' emitido por Solucion en Ingenieria Ejecutiva Ambiental.' +
     ' Si tiene dudas sobre la integridad por favor llame al 2229417295.';
-  var qrDataDataUrl = generateQRCode(qr2Text, 200);
+  // Canvas 400px + corrección 'L' (menos redundancia → versión QR más baja → módulos más grandes y escaneables)
+  var qrDataDataUrl = generateQRCode(qr2Text, 400, 'L');
   var qrDataBytes = await fetch(qrDataDataUrl).then(function(res) { return res.arrayBuffer(); });
   var qrDataImage = await pdfDoc.embedPng(qrDataBytes);
 
