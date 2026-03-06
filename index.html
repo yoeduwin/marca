@@ -1061,18 +1061,13 @@ async function buildCertificationPage(certPage, pdfDoc, opts) {
   var qrWebBytes = await fetch(qrWebDataUrl).then(function(res) { return res.arrayBuffer(); });
   var qrWebImage = await pdfDoc.embedPng(qrWebBytes);
 
-  // QR 2: datos del informe (texto plano, sin acentos para máxima compatibilidad de lectores)
-  var qr2Text = 'Informe numero ' + reportNumber +
-    ' emitido por Solucion en Ingenieria Ejecutiva Ambiental.' +
-    ' Si tiene dudas sobre la integridad por favor llame al 2229417295.';
 
 // Reemplaza la variable qr2Text actual por esta:
 var qr2Text = 'DATOS DEL INFORME\n' +
   '-------------------\n' +
   'Folio: ' + reportNumber + '\n' +
   'Emite: Solucion en Ingenieria Ejecutiva Ambiental.\n' +
-  ''Tel. de contacto: 222 941 72 95'
-
+  'Si tiene dudas, llame al 222 - 941 - 72 95';
   
   // Canvas 400px + corrección 'L' (menos redundancia → versión QR más baja → módulos más grandes y escaneables)
   var qrDataDataUrl = generateQRCode(qr2Text, 400, 'L');
