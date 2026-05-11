@@ -328,14 +328,14 @@
         </ul>
       </div>
       <div class="mode-card" id="cardConstancia">
-        <span class="mode-icon">🔬</span>
-        <h4>Constancia Técnica</h4>
-        <p>Inserta constancia de disparo en banco de pruebas al documento.</p>
+        <span class="mode-icon">🏛</span>
+        <h4>Fondo de Seguridad</h4>
+        <p>Aplica apariencia de papel institucional a cada página del PDF.</p>
         <ul>
-          <li>Fondo institucional de seguridad</li>
-          <li>Microtexto diagonal tenue</li>
-          <li>Datos técnicos personalizables</li>
-          <li>Compatible con opalina/marfil</li>
+          <li>Microtexto diagonal de seguridad</li>
+          <li>Marca de agua central tenue</li>
+          <li>Fondo marfil opcional</li>
+          <li>Sin páginas adicionales</li>
         </ul>
       </div>
     </div>
@@ -521,82 +521,60 @@
 
     </div><!-- /advancedBody -->
 
-    <!-- ===== SECCIÓN CONSTANCIA (solo modo constancia) ===== -->
+    <!-- ===== SECCIÓN FONDO DE SEGURIDAD (solo modo constancia) ===== -->
     <div id="sectionConstancia" class="hidden">
       <div class="config-section">
-        <div class="section-head">🔬 Datos del disparo</div>
+        <div class="section-head">🏛 Capas de seguridad visual</div>
 
-        <div class="grid-2">
+        <label class="toggle-row" for="cApplyIvory">
+          <div>
+            <span class="toggle-label">Fondo marfil</span>
+            <small>Tono cálido que simula papel institucional opalina</small>
+          </div>
+          <input type="checkbox" id="cApplyIvory" checked />
+        </label>
+
+        <label class="toggle-row" for="cApplyMicro">
+          <div>
+            <span class="toggle-label">Microtexto diagonal</span>
+            <small>Patrón repetido tenue en diagonal — opacity 0.04</small>
+          </div>
+          <input type="checkbox" id="cApplyMicro" checked />
+        </label>
+        <div id="rowMicroText" class="field-row" style="margin-top:4px">
+          <label for="cMicroText">Texto del microtexto</label>
+          <input type="text" id="cMicroText" value="EJECUTIVA AMBIENTAL · DISPARO EN BANCO DE PRUEBAS" autocomplete="off" />
+        </div>
+
+        <label class="toggle-row" for="cApplyWm" style="margin-top:10px">
+          <div>
+            <span class="toggle-label">Marca de agua central</span>
+            <small>Texto tenue centrado y rotado en cada página — opacity 0.03</small>
+          </div>
+          <input type="checkbox" id="cApplyWm" checked />
+        </label>
+        <div id="rowWmTexts" class="grid-2" style="margin-top:4px">
           <div class="field-row">
-            <label for="cFolio">Número de constancia (folio)</label>
-            <input type="text" id="cFolio" placeholder="Ej: CT-2601-001" autocomplete="off" />
+            <label for="cWmLine1">Línea 1</label>
+            <input type="text" id="cWmLine1" value="BANCO DE PRUEBAS" autocomplete="off" />
           </div>
           <div class="field-row">
-            <label for="cTitular">Titular / Empresa</label>
-            <input type="text" id="cTitular" placeholder="Nombre del titular o empresa" autocomplete="off" />
+            <label for="cWmLine2">Línea 2</label>
+            <input type="text" id="cWmLine2" value="EJECUTIVA AMBIENTAL" autocomplete="off" />
           </div>
         </div>
 
-        <div class="field-row">
-          <label for="cSistema">Sistema sometido a prueba</label>
-          <input type="text" id="cSistema" placeholder="Descripción del equipo o sistema" autocomplete="off" />
-        </div>
-
-        <div class="grid-2">
-          <div class="field-row">
-            <label for="cNSerie">Número de serie del equipo</label>
-            <input type="text" id="cNSerie" placeholder="N/S del equipo" autocomplete="off" />
+        <label class="toggle-row" for="cApplyBorder" style="margin-top:10px">
+          <div>
+            <span class="toggle-label">Marco decorativo</span>
+            <small>Doble borde institucional verde en cada página</small>
           </div>
-          <div class="field-row">
-            <label for="cNDisparo">No. de disparo / Secuencia</label>
-            <input type="text" id="cNDisparo" placeholder="Ej: D-001" autocomplete="off" />
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="field-row">
-            <label for="cFecha">Fecha del disparo</label>
-            <input type="date" id="cFecha" />
-          </div>
-          <div class="field-row">
-            <label for="cHora">Hora del disparo</label>
-            <input type="time" id="cHora" />
-          </div>
-        </div>
-
-        <div class="field-row">
-          <label>Resultado</label>
-          <div class="radio-group">
-            <label>
-              <input type="radio" name="cResultado" value="aprobado" id="radioAprobado" checked />
-              Aprobado
-            </label>
-            <label>
-              <input type="radio" name="cResultado" value="no_aprobado" id="radioNoAprobado" />
-              No aprobado
-            </label>
-          </div>
-        </div>
-
-        <div class="field-row">
-          <label for="cObservaciones">Observaciones técnicas</label>
-          <textarea id="cObservaciones" rows="3" placeholder="Observaciones del disparo en banco de pruebas..."></textarea>
-        </div>
-
-        <div class="grid-2">
-          <div class="field-row">
-            <label for="cResponsable">Responsable técnico</label>
-            <input type="text" id="cResponsable" placeholder="Nombre completo" autocomplete="off" />
-          </div>
-          <div class="field-row">
-            <label for="cCertResponsable">No. de certificación</label>
-            <input type="text" id="cCertResponsable" placeholder="Número de certificación" autocomplete="off" />
-          </div>
-        </div>
+          <input type="checkbox" id="cApplyBorder" />
+        </label>
       </div>
 
       <div class="constancia-info-note">
-        La constancia se insertará al inicio del documento con fondo de seguridad institucional, microtexto diagonal de protección y marca de agua central tenue.
+        Se aplicará el fondo de seguridad sobre cada página del PDF existente. No se insertará ninguna página adicional.
       </div>
     </div><!-- /sectionConstancia -->
 
@@ -698,18 +676,14 @@ var state = {
   flattenQuality: '0.92',
   // UI
   advancedOpen: false,
-  // Constancia fields
-  constanciaFolio: '',
-  constanciaTitular: '',
-  constanciaSistema: '',
-  constanciaNSerie: '',
-  constanciaFecha: '',
-  constanciaHora: '',
-  constanciaNDisparo: '',
-  constanciaResultado: 'aprobado',
-  constanciaObservaciones: '',
-  constanciaResponsable: '',
-  constanciaCertResponsable: '',
+  // Fondo de seguridad (modo constancia)
+  cApplyIvory: true,
+  cApplyMicro: true,
+  cMicroText: 'EJECUTIVA AMBIENTAL · DISPARO EN BANCO DE PRUEBAS',
+  cApplyWm: true,
+  cWmLine1: 'BANCO DE PRUEBAS',
+  cWmLine2: 'EJECUTIVA AMBIENTAL',
+  cApplyBorder: false,
   // Runtime
   selectedFiles: [],
   blobURLs: []
@@ -874,8 +848,8 @@ function renderUI() {
 function validateConfig() {
   var errors = [];
   if (state.mode === 'constancia') {
-    if (!state.constanciaFolio.trim()) {
-      errors.push('Por favor ingresa el número de constancia (folio).');
+    if (!state.cApplyIvory && !state.cApplyMicro && !state.cApplyWm && !state.cApplyBorder) {
+      errors.push('Selecciona al menos una capa de seguridad visual.');
     }
     return errors;
   }
@@ -926,18 +900,14 @@ function buildOptionsFromUI() {
     enableWatermark: state.applyWatermark,
     enablePagination: state.applyPagination,
     includeCertificate: state.mode === 'final' ? state.includeCertificate : false,
-    constanciaData: {
-      folio: state.constanciaFolio,
-      titular: state.constanciaTitular,
-      sistema: state.constanciaSistema,
-      nserie: state.constanciaNSerie,
-      fecha: formatDateStr(state.constanciaFecha),
-      hora: state.constanciaHora,
-      ndisparo: state.constanciaNDisparo,
-      resultado: state.constanciaResultado,
-      observaciones: state.constanciaObservaciones,
-      responsable: state.constanciaResponsable,
-      certResponsable: state.constanciaCertResponsable
+    secBg: {
+      applyIvory:  state.cApplyIvory,
+      applyMicro:  state.cApplyMicro,
+      microText:   state.cMicroText || 'EJECUTIVA AMBIENTAL · DISPARO EN BANCO DE PRUEBAS',
+      applyWm:     state.cApplyWm,
+      wmLine1:     state.cWmLine1 || 'BANCO DE PRUEBAS',
+      wmLine2:     state.cWmLine2 || 'EJECUTIVA AMBIENTAL',
+      applyBorder: state.cApplyBorder
     }
   };
 }
@@ -972,19 +942,14 @@ function syncFromForm() {
   state.flattenDoc = document.getElementById('flattenDoc').checked;
   state.flattenScale = document.getElementById('flattenScale').value;
   state.flattenQuality = document.getElementById('flattenQuality').value;
-  // Constancia fields
-  state.constanciaFolio = document.getElementById('cFolio').value;
-  state.constanciaTitular = document.getElementById('cTitular').value;
-  state.constanciaSistema = document.getElementById('cSistema').value;
-  state.constanciaNSerie = document.getElementById('cNSerie').value;
-  state.constanciaFecha = document.getElementById('cFecha').value;
-  state.constanciaHora = document.getElementById('cHora').value;
-  state.constanciaNDisparo = document.getElementById('cNDisparo').value;
-  var cResultadoEl = document.querySelector('input[name="cResultado"]:checked');
-  if (cResultadoEl) state.constanciaResultado = cResultadoEl.value;
-  state.constanciaObservaciones = document.getElementById('cObservaciones').value;
-  state.constanciaResponsable = document.getElementById('cResponsable').value;
-  state.constanciaCertResponsable = document.getElementById('cCertResponsable').value;
+  // Fondo de seguridad
+  state.cApplyIvory = document.getElementById('cApplyIvory').checked;
+  state.cApplyMicro = document.getElementById('cApplyMicro').checked;
+  state.cMicroText  = document.getElementById('cMicroText').value;
+  state.cApplyWm    = document.getElementById('cApplyWm').checked;
+  state.cWmLine1    = document.getElementById('cWmLine1').value;
+  state.cWmLine2    = document.getElementById('cWmLine2').value;
+  state.cApplyBorder = document.getElementById('cApplyBorder').checked;
 }
 
 function syncToForm() {
@@ -1005,33 +970,19 @@ function syncToForm() {
   document.getElementById('flattenDoc').checked = state.flattenDoc;
   document.getElementById('flattenScale').value = state.flattenScale;
   document.getElementById('flattenQuality').value = state.flattenQuality;
-  // Constancia fields
-  document.getElementById('cFolio').value = state.constanciaFolio;
-  document.getElementById('cTitular').value = state.constanciaTitular;
-  document.getElementById('cSistema').value = state.constanciaSistema;
-  document.getElementById('cNSerie').value = state.constanciaNSerie;
-  document.getElementById('cFecha').value = state.constanciaFecha;
-  document.getElementById('cHora').value = state.constanciaHora;
-  document.getElementById('cNDisparo').value = state.constanciaNDisparo;
-  var cRadioEl = document.querySelector('input[name="cResultado"][value="' + state.constanciaResultado + '"]');
-  if (cRadioEl) cRadioEl.checked = true;
-  document.getElementById('cObservaciones').value = state.constanciaObservaciones;
-  document.getElementById('cResponsable').value = state.constanciaResponsable;
-  document.getElementById('cCertResponsable').value = state.constanciaCertResponsable;
+  // Fondo de seguridad
+  document.getElementById('cApplyIvory').checked = state.cApplyIvory;
+  document.getElementById('cApplyMicro').checked = state.cApplyMicro;
+  document.getElementById('cMicroText').value     = state.cMicroText;
+  document.getElementById('cApplyWm').checked     = state.cApplyWm;
+  document.getElementById('cWmLine1').value       = state.cWmLine1;
+  document.getElementById('cWmLine2').value       = state.cWmLine2;
+  document.getElementById('cApplyBorder').checked = state.cApplyBorder;
 }
 
 // =========================================================================
 // UTILITIES
 // =========================================================================
-function formatDateStr(dateStr) {
-  if (!dateStr) return '';
-  var parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  var months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var m = parseInt(parts[1]) - 1;
-  return parts[2] + ' de ' + (months[m] || parts[1]) + ' de ' + parts[0];
-}
-
 function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -1275,208 +1226,65 @@ var qr2Text = 'DATOS DEL INFORME\n' +
 }
 
 // =========================================================================
-// CONSTANCIA TÉCNICA PAGE BUILDER
+// SECURITY BACKGROUND — aplica sobre páginas existentes del PDF
 // =========================================================================
-async function buildConstanciaPage(constPage, pdfDoc, opts) {
-  var font = opts.font, fontBold = opts.fontBold;
-  var data = opts.constanciaData;
-  var sz = constPage.getSize();
-  var pgWidth = sz.width, pgHeight = sz.height;
-
-  var green       = PDFLib.rgb(0, 86/255, 0);
-  var darkGreen   = PDFLib.rgb(0, 56/255, 0);
-  var gray        = PDFLib.rgb(0.4, 0.4, 0.4);
-  var lightGray   = PDFLib.rgb(0.62, 0.62, 0.62);
-  var black       = PDFLib.rgb(0.1, 0.1, 0.1);
-  var ivory       = PDFLib.rgb(0.992, 0.988, 0.973);
-  var lightGreenBg = PDFLib.rgb(0.97, 0.98, 0.97);
+function applySecurityBackground(page, opts) {
+  var font  = opts.font;
+  var secBg = opts.secBg;
+  var sz    = page.getSize();
+  var pgW   = sz.width, pgH = sz.height;
+  var green = PDFLib.rgb(0, 86/255, 0);
 
   // Capa 0: fondo marfil
-  constPage.drawRectangle({ x: 0, y: 0, width: pgWidth, height: pgHeight, color: ivory });
+  if (secBg.applyIvory) {
+    page.drawRectangle({ x: 0, y: 0, width: pgW, height: pgH, color: PDFLib.rgb(0.992, 0.988, 0.973) });
+  }
 
-  // Capa 1: microtexto diagonal de seguridad
-  var microText = 'EJECUTIVA AMBIENTAL · DISPARO EN BANCO DE PRUEBAS';
-  var microSize = 7;
-  var microRot = -35;
-  var microRad = microRot * Math.PI / 180;
-  var diag = Math.sqrt(pgWidth * pgWidth + pgHeight * pgHeight);
-  var stepD = 88;
-  var stepA = 220;
-  for (var d = -diag; d < diag * 2; d += stepD) {
-    for (var pos = -diag; pos < diag * 2; pos += stepA) {
-      var mx = pos * Math.cos(microRad) - d * Math.sin(microRad);
-      var my = pos * Math.sin(microRad) + d * Math.cos(microRad);
-      if (mx >= -60 && mx <= pgWidth + 60 && my >= -60 && my <= pgHeight + 60) {
-        constPage.drawText(microText, {
-          x: mx, y: my, size: microSize, font: font,
-          color: green, opacity: 0.04, rotate: PDFLib.degrees(microRot)
-        });
+  // Capa 1: microtexto diagonal
+  if (secBg.applyMicro && secBg.microText) {
+    var mRot = -35;
+    var mRad = mRot * Math.PI / 180;
+    var diag = Math.sqrt(pgW * pgW + pgH * pgH);
+    var stepD = 88, stepA = 220;
+    for (var d = -diag; d < diag * 2; d += stepD) {
+      for (var pos = -diag; pos < diag * 2; pos += stepA) {
+        var mx = pos * Math.cos(mRad) - d * Math.sin(mRad);
+        var my = pos * Math.sin(mRad) + d * Math.cos(mRad);
+        if (mx >= -60 && mx <= pgW + 60 && my >= -60 && my <= pgH + 60) {
+          page.drawText(secBg.microText, {
+            x: mx, y: my, size: 7, font: font,
+            color: green, opacity: 0.04, rotate: PDFLib.degrees(mRot)
+          });
+        }
       }
     }
   }
 
-  // Capa 2: marca de agua central
-  var wmLines = ['BANCO DE PRUEBAS', 'EJECUTIVA AMBIENTAL'];
-  var wmSizes = [30, 17];
-  var wmRot = -35;
-  var wmRad = wmRot * Math.PI / 180;
-  var wmCx = pgWidth / 2;
-  var wmCy = pgHeight / 2;
-  // Calcular offsets centrados compensando rotación: posición aproximada
-  var offsets = [18, -20];
-  for (var wi = 0; wi < 2; wi++) {
-    var wt = wmLines[wi];
-    var ws = wmSizes[wi];
-    var tw = font.widthOfTextAtSize(wt, ws);
-    // Desplazamos el origen para centrar el texto girado en (wmCx, wmCy)
-    var tx = wmCx - (tw / 2) * Math.cos(wmRad) + offsets[wi] * Math.sin(wmRad);
-    var ty = wmCy - (tw / 2) * Math.sin(wmRad) - offsets[wi] * Math.cos(wmRad);
-    constPage.drawText(wt, {
-      x: tx, y: ty, size: ws, font: font,
-      color: green, opacity: 0.03, rotate: PDFLib.degrees(wmRot)
-    });
+  // Capa 2: marca de agua central (dos líneas)
+  if (secBg.applyWm) {
+    var wmRot = -35;
+    var wmRad = wmRot * Math.PI / 180;
+    var wmCx  = pgW / 2, wmCy = pgH / 2;
+    var wmLines  = [secBg.wmLine1, secBg.wmLine2];
+    var wmSizes  = [30, 17];
+    var wmOffsets = [18, -20];
+    for (var wi = 0; wi < 2; wi++) {
+      if (!wmLines[wi]) continue;
+      var tw = font.widthOfTextAtSize(wmLines[wi], wmSizes[wi]);
+      var tx = wmCx - (tw / 2) * Math.cos(wmRad) + wmOffsets[wi] * Math.sin(wmRad);
+      var ty = wmCy - (tw / 2) * Math.sin(wmRad) - wmOffsets[wi] * Math.cos(wmRad);
+      page.drawText(wmLines[wi], {
+        x: tx, y: ty, size: wmSizes[wi], font: font,
+        color: green, opacity: 0.03, rotate: PDFLib.degrees(wmRot)
+      });
+    }
   }
 
   // Capa 3: doble marco decorativo
-  constPage.drawRectangle({ x: 30, y: 30, width: pgWidth - 60, height: pgHeight - 60, borderColor: green, borderWidth: 2 });
-  constPage.drawRectangle({ x: 42, y: 42, width: pgWidth - 84, height: pgHeight - 84, borderColor: green, borderWidth: 0.75 });
-
-  // Capa 4: contenido
-  var xL = 62;  // margen izquierdo del contenido
-  var xR = pgWidth - 62;  // margen derecho
-  var cw = xR - xL;  // ancho del contenido
-  var y = pgHeight - 74;
-
-  // Encabezado
-  var orgTxt = 'EJECUTIVA AMBIENTAL';
-  var orgW = fontBold.widthOfTextAtSize(orgTxt, 13);
-  constPage.drawText(orgTxt, { x: pgWidth / 2 - orgW / 2, y: y, size: 13, font: fontBold, color: darkGreen });
-  y -= 17;
-  var subTxt = 'Seguridad e Higiene Industrial';
-  var subW = font.widthOfTextAtSize(subTxt, 8.5);
-  constPage.drawText(subTxt, { x: pgWidth / 2 - subW / 2, y: y, size: 8.5, font: font, color: gray });
-  y -= 14;
-  constPage.drawLine({ start: { x: xL, y: y }, end: { x: xR, y: y }, thickness: 1.5, color: green });
-  y -= 22;
-
-  // Título del documento
-  var titleTxt = 'CONSTANCIA TÉCNICA';
-  var titleW = fontBold.widthOfTextAtSize(titleTxt, 17);
-  constPage.drawText(titleTxt, { x: pgWidth / 2 - titleW / 2, y: y, size: 17, font: fontBold, color: black });
-  y -= 19;
-  var subtTxt = 'DISPARO EN BANCO DE PRUEBAS';
-  var subtW = fontBold.widthOfTextAtSize(subtTxt, 10.5);
-  constPage.drawText(subtTxt, { x: pgWidth / 2 - subtW / 2, y: y, size: 10.5, font: fontBold, color: green });
-  y -= 15;
-  var folioTxt = 'No. ' + (data.folio || 'N/D');
-  var folioW = font.widthOfTextAtSize(folioTxt, 8.5);
-  constPage.drawText(folioTxt, { x: pgWidth / 2 - folioW / 2, y: y, size: 8.5, font: font, color: lightGray });
-  y -= 12;
-  constPage.drawLine({ start: { x: xL + 20, y: y }, end: { x: xR - 20, y: y }, thickness: 0.4, color: PDFLib.rgb(0.82, 0.82, 0.82) });
-  y -= 18;
-
-  // Tabla de datos técnicos (2 columnas)
-  var colA = xL;
-  var colB = pgWidth / 2 + 8;
-  var halfW = pgWidth / 2 - xL - 12;
-  var rowH = 22;
-  var lblSz = 7;
-  var valSz = 9;
-  var lblColor = PDFLib.rgb(0.38, 0.38, 0.38);
-
-  function drawField(label, value, cx, cy) {
-    constPage.drawText(label, { x: cx, y: cy + rowH * 0.42, size: lblSz, font: fontBold, color: lblColor });
-    constPage.drawText(value || '—', { x: cx, y: cy, size: valSz, font: font, color: black });
-    constPage.drawLine({ start: { x: cx, y: cy - 4 }, end: { x: cx + halfW, y: cy - 4 }, thickness: 0.3, color: PDFLib.rgb(0.86, 0.86, 0.86) });
+  if (secBg.applyBorder) {
+    page.drawRectangle({ x: 28, y: 28, width: pgW - 56, height: pgH - 56, borderColor: green, borderWidth: 2 });
+    page.drawRectangle({ x: 40, y: 40, width: pgW - 80, height: pgH - 80, borderColor: green, borderWidth: 0.75 });
   }
-
-  // Fila 1
-  drawField('TITULAR / EMPRESA', data.titular || '', colA, y);
-  drawField('SISTEMA SOMETIDO A PRUEBA', data.sistema || '', colB, y);
-  y -= rowH * 2;
-
-  // Fila 2
-  drawField('NÚMERO DE SERIE DEL EQUIPO', data.nserie || '', colA, y);
-  drawField('FECHA DEL DISPARO', data.fecha || '', colB, y);
-  y -= rowH * 2;
-
-  // Fila 3
-  drawField('HORA DEL DISPARO', data.hora || '', colA, y);
-  drawField('No. DE DISPARO / SECUENCIA', data.ndisparo || '', colB, y);
-  y -= rowH * 2;
-
-  // Fila 4
-  drawField('RESPONSABLE TÉCNICO', data.responsable || '', colA, y);
-  drawField('No. DE CERTIFICACIÓN', data.certResponsable || '', colB, y);
-  y -= rowH * 2 + 10;
-
-  // Caja de resultado
-  var esAprobado = (data.resultado !== 'no_aprobado');
-  var resColor  = esAprobado ? PDFLib.rgb(0, 0.55, 0.12) : PDFLib.rgb(0.72, 0.04, 0.04);
-  var resBgClr  = esAprobado ? PDFLib.rgb(0.93, 0.99, 0.94) : PDFLib.rgb(0.99, 0.93, 0.93);
-  var resBrClr  = esAprobado ? PDFLib.rgb(0.4, 0.82, 0.5) : PDFLib.rgb(0.9, 0.5, 0.5);
-  var resTxt    = esAprobado ? 'RESULTADO: APROBADO' : 'RESULTADO: NO APROBADO';
-  var resBoxH = 30;
-  constPage.drawRectangle({ x: xL, y: y - resBoxH, width: cw, height: resBoxH, color: resBgClr, borderColor: resBrClr, borderWidth: 1.2 });
-  var resTW = fontBold.widthOfTextAtSize(resTxt, 12);
-  constPage.drawText(resTxt, { x: pgWidth / 2 - resTW / 2, y: y - resBoxH / 2 - 4.5, size: 12, font: fontBold, color: resColor });
-  y -= resBoxH + 14;
-
-  // Observaciones
-  constPage.drawText('OBSERVACIONES TÉCNICAS', { x: xL, y: y, size: 7.5, font: fontBold, color: lblColor });
-  y -= 11;
-  var obsBoxH = 68;
-  constPage.drawRectangle({ x: xL, y: y - obsBoxH, width: cw, height: obsBoxH, color: lightGreenBg, borderColor: PDFLib.rgb(0.8, 0.88, 0.82), borderWidth: 0.75 });
-
-  var obsText = data.observaciones || '';
-  var obsSz = 8.5;
-  var obsLH = 11.5;
-  var obsMaxW = cw - 14;
-  var obsWords = obsText.split(' ');
-  var obsLines = [];
-  var obsLine = '';
-  for (var owi = 0; owi < obsWords.length; owi++) {
-    var testObs = obsLine ? obsLine + ' ' + obsWords[owi] : obsWords[owi];
-    if (font.widthOfTextAtSize(testObs, obsSz) > obsMaxW) {
-      if (obsLine) obsLines.push(obsLine);
-      obsLine = obsWords[owi];
-    } else {
-      obsLine = testObs;
-    }
-  }
-  if (obsLine) obsLines.push(obsLine);
-  var maxObsLines = Math.floor((obsBoxH - 10) / obsLH);
-  var obsStartY = y - 10;
-  for (var oli = 0; oli < Math.min(obsLines.length, maxObsLines); oli++) {
-    constPage.drawText(obsLines[oli], { x: xL + 7, y: obsStartY - oli * obsLH, size: obsSz, font: font, color: black });
-  }
-  y -= obsBoxH + 22;
-
-  // Bloque de firma
-  var sigW = 200;
-  var sigX = xL + 20;
-  constPage.drawLine({ start: { x: sigX, y: y }, end: { x: sigX + sigW, y: y }, thickness: 0.7, color: PDFLib.rgb(0.55, 0.55, 0.55) });
-  var sigName = data.responsable || 'Responsable Técnico';
-  var sigNW = font.widthOfTextAtSize(sigName, 8);
-  constPage.drawText(sigName, { x: sigX + sigW / 2 - sigNW / 2, y: y - 13, size: 8, font: fontBold, color: black });
-  if (data.certResponsable) {
-    var certTxt = 'Cert. No. ' + data.certResponsable;
-    var certW = font.widthOfTextAtSize(certTxt, 7);
-    constPage.drawText(certTxt, { x: sigX + sigW / 2 - certW / 2, y: y - 24, size: 7, font: font, color: gray });
-  }
-
-  // Footer
-  var today = new Date();
-  var todayStr = today.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-  constPage.drawLine({ start: { x: xL, y: 58 }, end: { x: xR, y: 58 }, thickness: 0.4, color: PDFLib.rgb(0.78, 0.78, 0.78) });
-  var ftLeft = 'Folio: ' + (data.folio || 'N/D') + '  ·  Emisión: ' + todayStr;
-  constPage.drawText(ftLeft, { x: xL, y: 44, size: 7, font: font, color: lightGray });
-  var ftRight = 'www.ejecutivambiental.com';
-  var ftRW = font.widthOfTextAtSize(ftRight, 7);
-  constPage.drawText(ftRight, { x: xR - ftRW, y: 44, size: 7, font: font, color: lightGray });
-  var ftCenter = 'Teléfono: 222 941 7295  ·  Documento generado digitalmente';
-  var ftCW = font.widthOfTextAtSize(ftCenter, 6.5);
-  constPage.drawText(ftCenter, { x: pgWidth / 2 - ftCW / 2, y: 33, size: 6.5, font: font, color: PDFLib.rgb(0.72, 0.72, 0.72) });
 }
 
 function addFooterPageCount(page, cfg) {
@@ -1523,18 +1331,17 @@ async function processSinglePDF(file, opts) {
   var downloadName;
 
   if (state.mode === 'constancia') {
-    var constPage = pdfDoc.insertPage(0, PDFLib.PageSizes.Letter);
-    await buildConstanciaPage(constPage, pdfDoc, {
-      font: font, fontBold: fontBold,
-      constanciaData: opts.constanciaData
-    });
-    pdfDoc.setTitle('Constancia Técnica - ' + (opts.constanciaData.folio || ''));
+    var allPages = pdfDoc.getPages();
+    for (var si = 0; si < allPages.length; si++) {
+      applySecurityBackground(allPages[si], { font: font, secBg: opts.secBg });
+    }
+    pdfDoc.setTitle('Documento con Fondo de Seguridad Institucional');
     pdfDoc.setAuthor('Ejecutiva Ambiental');
-    pdfDoc.setSubject('Constancia de Disparo en Banco de Pruebas');
-    pdfDoc.setKeywords(['constancia', 'banco-de-pruebas', 'disparo', 'ejecutiva-ambiental']);
+    pdfDoc.setSubject('Papel de seguridad - Disparo en banco de pruebas');
+    pdfDoc.setKeywords(['seguridad', 'banco-de-pruebas', 'ejecutiva-ambiental']);
     pdfDoc.setProducer('Sistema de Certificacion Digital SEA');
     pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-    downloadName = 'Constancia-' + (opts.constanciaData.folio || 'CT') + ' - ' + file.name;
+    downloadName = 'SEG - ' + file.name;
 
   } else if (state.mode === 'final') {
     var pages = pdfDoc.getPages();
@@ -1604,10 +1411,10 @@ async function processSinglePDF(file, opts) {
       }
     });
     if (state.mode === 'constancia') {
-      finalPdfDoc.setTitle('Constancia Técnica - ' + (opts.constanciaData.folio || ''));
+      finalPdfDoc.setTitle('Documento con Fondo de Seguridad Institucional');
       finalPdfDoc.setAuthor('Ejecutiva Ambiental');
-      finalPdfDoc.setSubject('Constancia de Disparo en Banco de Pruebas');
-      finalPdfDoc.setKeywords(['constancia', 'banco-de-pruebas', 'disparo', 'ejecutiva-ambiental']);
+      finalPdfDoc.setSubject('Papel de seguridad - Disparo en banco de pruebas');
+      finalPdfDoc.setKeywords(['seguridad', 'banco-de-pruebas', 'ejecutiva-ambiental']);
       finalPdfDoc.setProducer('Sistema de Certificacion Digital SEA');
       finalPdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
     } else if (state.mode === 'final') {
