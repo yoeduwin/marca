@@ -1228,19 +1228,18 @@ var qr2Text = 'DATOS DEL INFORME\n' +
 // =========================================================================
 // SECURITY BACKGROUND — aplica sobre páginas existentes del PDF
 // =========================================================================
-function applySecurityBackground(page, opts) {
+function applySecurityBackground(page, pdfDoc, opts) {
   var font  = opts.font;
   var secBg = opts.secBg;
   var sz    = page.getSize();
   var pgW   = sz.width, pgH = sz.height;
   var green = PDFLib.rgb(0, 86/255, 0);
 
-  // Capa 0: fondo marfil
+  // Dibujar todas las capas — pdf-lib las añade al FINAL del content stream
   if (secBg.applyIvory) {
     page.drawRectangle({ x: 0, y: 0, width: pgW, height: pgH, color: PDFLib.rgb(0.992, 0.988, 0.973) });
   }
 
-  // Capa 1: microtexto diagonal
   if (secBg.applyMicro && secBg.microText) {
     var mRot = -35;
     var mRad = mRot * Math.PI / 180;
@@ -1260,7 +1259,6 @@ function applySecurityBackground(page, opts) {
     }
   }
 
-  // Capa 2: marca de agua central (dos líneas)
   if (secBg.applyWm) {
     var wmRot = -35;
     var wmRad = wmRot * Math.PI / 180;
@@ -1280,10 +1278,21 @@ function applySecurityBackground(page, opts) {
     }
   }
 
-  // Capa 3: doble marco decorativo
   if (secBg.applyBorder) {
     page.drawRectangle({ x: 28, y: 28, width: pgW - 56, height: pgH - 56, borderColor: green, borderWidth: 2 });
     page.drawRectangle({ x: 40, y: 40, width: pgW - 80, height: pgH - 80, borderColor: green, borderWidth: 0.75 });
+  }
+
+  // Mover nuestro nuevo content stream AL INICIO para que quede DETRÁS del contenido original.
+  // pdf-lib siempre apenda; aquí reordenamos para que el fondo vaya primero.
+  var contentsVal = page.node.get(PDFLib.PDFName.of('Contents'));
+  if (contentsVal && typeof contentsVal.asArray === 'function') {
+    var refs = contentsVal.asArray();
+    if (refs.length >= 2) {
+      var bgRef = refs[refs.length - 1]; // último = lo que acabamos de dibujar
+      var reordered = [bgRef].concat(refs.slice(0, refs.length - 1));
+      page.node.set(PDFLib.PDFName.of('Contents'), pdfDoc.context.obj(reordered));
+    }
   }
 }
 
@@ -1333,7 +1342,7 @@ async function processSinglePDF(file, opts) {
   if (state.mode === 'constancia') {
     var allPages = pdfDoc.getPages();
     for (var si = 0; si < allPages.length; si++) {
-      applySecurityBackground(allPages[si], { font: font, secBg: opts.secBg });
+      applySecurityBackground(allPages[si], pdfDoc, { font: font, secBg: opts.secBg });
     }
     pdfDoc.setTitle('Documento con Fondo de Seguridad Institucional');
     pdfDoc.setAuthor('Ejecutiva Ambiental');
