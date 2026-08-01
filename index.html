@@ -73,7 +73,7 @@
     .step-subtitle { font-size: 0.83rem; color: #666; margin-bottom: 22px; line-height: 1.5; }
 
     /* ===================== STEP 1: MODO ===================== */
-    .mode-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 26px; }
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 26px; }
     .mode-card {
       padding: 20px; border: 2px solid #ddd; border-radius: 16px;
       background: #fafafa; cursor: pointer; transition: all 0.22s; text-align: left;
@@ -117,10 +117,6 @@
     }
     .field-row textarea { resize: vertical; }
     .field-row input:focus, .field-row select:focus, .field-row textarea:focus { outline: none; border-color: #005600; }
-    .constancia-info-note {
-      background: #f0f8f0; border: 1px solid #c8e6c9; border-radius: 10px;
-      padding: 12px 16px; font-size: 0.82rem; color: #2e7d32; margin-bottom: 10px;
-    }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
     /* Toggle row (checkbox + label) */
@@ -316,26 +312,15 @@
           <li>Metadata institucional completa</li>
         </ul>
       </div>
-      <div class="mode-card" id="cardMarca">
+      <div class="mode-card" id="cardPreliminar">
         <span class="mode-icon">🔏</span>
         <h4>Preliminar / Anexos</h4>
-        <p>Para documentos de trabajo, borradores o anexos.</p>
+        <p>Misma protección que el informe final, pero marcado como borrador NO oficial.</p>
         <ul>
-          <li>Marca de agua y/o paginación por rango</li>
-          <li>Timestamp automático opcional</li>
-          <li>Protección multicapa</li>
+          <li>Marca de agua "PRELIMINAR · NO OFICIAL"</li>
+          <li>Timestamp automático de generación</li>
+          <li>Protección de 3 capas y paginación</li>
           <li>Sin página de certificación</li>
-        </ul>
-      </div>
-      <div class="mode-card" id="cardConstancia">
-        <span class="mode-icon">🏛</span>
-        <h4>Fondo de Seguridad</h4>
-        <p>Aplica apariencia de papel institucional a cada página del PDF.</p>
-        <ul>
-          <li>Microtexto diagonal de seguridad</li>
-          <li>Marca de agua central tenue</li>
-          <li>Fondo marfil opcional</li>
-          <li>Sin páginas adicionales</li>
         </ul>
       </div>
     </div>
@@ -422,24 +407,6 @@
 
       <hr class="advanced-divider">
 
-      <!-- Rango de páginas (Marca solo) -->
-      <div id="rowPageRange" class="config-section">
-        <div class="section-head">📄 Rango de páginas</div>
-        <div class="grid-2">
-          <div class="field-row">
-            <label for="pageFrom">Desde página</label>
-            <input type="number" id="pageFrom" min="1" value="1" />
-          </div>
-          <div class="field-row">
-            <label for="pageTo">Hasta página</label>
-            <input type="number" id="pageTo" min="1" placeholder="Última" />
-          </div>
-        </div>
-        <p style="font-size:0.76rem;color:#888;margin-top:5px">Deja "Hasta página" vacío para aplicar hasta el final del documento.</p>
-      </div>
-
-      <hr class="advanced-divider" id="dividerPageRange">
-
       <!-- Densidad y opacidad (si watermark) -->
       <div id="rowDensityOpacity" class="config-section">
         <div class="section-head">🎚 Densidad y opacidad</div>
@@ -468,22 +435,15 @@
 
       <hr class="advanced-divider" id="dividerDensity">
 
-      <!-- Extras solo Marca (timestamp + multilayer) -->
+      <!-- Extras solo Preliminar (timestamp) -->
       <div id="rowMarcaExtras" class="config-section">
         <div class="section-head">🕒 Opciones adicionales</div>
         <label class="toggle-row" for="addTimestamp">
           <div>
             <span class="toggle-label">Incluir timestamp automático</span>
-            <small>Agrega fecha y hora al texto de la marca de agua</small>
+            <small>Agrega fecha y hora de generación al texto de la marca de agua</small>
           </div>
           <input type="checkbox" id="addTimestamp" />
-        </label>
-        <label class="toggle-row" for="multiLayer">
-          <div>
-            <span class="toggle-label">Múltiples capas de protección</span>
-            <small>Marca de agua en 2 capas superpuestas (más robusta)</small>
-          </div>
-          <input type="checkbox" id="multiLayer" />
         </label>
       </div>
 
@@ -520,63 +480,6 @@
       </div>
 
     </div><!-- /advancedBody -->
-
-    <!-- ===== SECCIÓN FONDO DE SEGURIDAD (solo modo constancia) ===== -->
-    <div id="sectionConstancia" class="hidden">
-      <div class="config-section">
-        <div class="section-head">🏛 Capas de seguridad visual</div>
-
-        <label class="toggle-row" for="cApplyIvory">
-          <div>
-            <span class="toggle-label">Fondo marfil</span>
-            <small>Tono cálido que simula papel institucional opalina</small>
-          </div>
-          <input type="checkbox" id="cApplyIvory" checked />
-        </label>
-
-        <label class="toggle-row" for="cApplyMicro">
-          <div>
-            <span class="toggle-label">Microtexto diagonal</span>
-            <small>Patrón repetido tenue en diagonal — opacity 0.04</small>
-          </div>
-          <input type="checkbox" id="cApplyMicro" checked />
-        </label>
-        <div id="rowMicroText" class="field-row" style="margin-top:4px">
-          <label for="cMicroText">Texto del microtexto</label>
-          <input type="text" id="cMicroText" value="EJECUTIVA AMBIENTAL · DISPARO EN BANCO DE PRUEBAS" autocomplete="off" />
-        </div>
-
-        <label class="toggle-row" for="cApplyWm" style="margin-top:10px">
-          <div>
-            <span class="toggle-label">Marca de agua central</span>
-            <small>Texto tenue centrado y rotado en cada página — opacity 0.03</small>
-          </div>
-          <input type="checkbox" id="cApplyWm" checked />
-        </label>
-        <div id="rowWmTexts" class="grid-2" style="margin-top:4px">
-          <div class="field-row">
-            <label for="cWmLine1">Línea 1</label>
-            <input type="text" id="cWmLine1" value="BANCO DE PRUEBAS" autocomplete="off" />
-          </div>
-          <div class="field-row">
-            <label for="cWmLine2">Línea 2</label>
-            <input type="text" id="cWmLine2" value="EJECUTIVA AMBIENTAL" autocomplete="off" />
-          </div>
-        </div>
-
-        <label class="toggle-row" for="cApplyBorder" style="margin-top:10px">
-          <div>
-            <span class="toggle-label">Marco decorativo</span>
-            <small>Doble borde institucional verde en cada página</small>
-          </div>
-          <input type="checkbox" id="cApplyBorder" />
-        </label>
-      </div>
-
-      <div class="constancia-info-note">
-        Se aplicará el fondo de seguridad sobre cada página del PDF existente. No se insertará ninguna página adicional.
-      </div>
-    </div><!-- /sectionConstancia -->
 
     <div class="step-nav">
       <button class="btn btn-secondary" id="btnStep2Back">← Atrás</button>
@@ -662,11 +565,8 @@ var state = {
   textOption: 'predefined',
   customText1: 'INFORME PRELIMINAR -',
   customText2: 'EJECUTIVA AMBIENTAL 2025',
-  // Marca-only
-  pageFrom: 1,
-  pageTo: '',
+  // Preliminar-only
   addTimestamp: true,
-  multiLayer: true,
   // Advanced watermark
   density: 'media',
   opacity: '0.25',
@@ -676,14 +576,6 @@ var state = {
   flattenQuality: '0.92',
   // UI
   advancedOpen: false,
-  // Fondo de seguridad (modo constancia)
-  cApplyIvory: true,
-  cApplyMicro: true,
-  cMicroText: 'EJECUTIVA AMBIENTAL · DISPARO EN BANCO DE PRUEBAS',
-  cApplyWm: true,
-  cWmLine1: 'BANCO DE PRUEBAS',
-  cWmLine2: 'EJECUTIVA AMBIENTAL',
-  cApplyBorder: false,
   // Runtime
   selectedFiles: [],
   blobURLs: []
@@ -725,30 +617,18 @@ function renderStepPanels() {
 
 function renderModeCards() {
   document.getElementById('cardFinal').classList.toggle('active', state.mode === 'final');
-  document.getElementById('cardMarca').classList.toggle('active', state.mode === 'marca');
-  document.getElementById('cardConstancia').classList.toggle('active', state.mode === 'constancia');
+  document.getElementById('cardPreliminar').classList.toggle('active', state.mode === 'preliminar');
 }
 
 function renderConfigPanel() {
   var isFinal = state.mode === 'final';
-  var isConstancia = state.mode === 'constancia';
   var wm = state.applyWatermark;
 
   document.getElementById('step2Subtitle').textContent = isFinal
-    ? 'Modo: Informe Final Digital — configura certificado, marca de agua y paginación.'
-    : isConstancia
-      ? 'Modo: Constancia Técnica — ingresa los datos del disparo en banco de pruebas.'
-      : 'Modo: Preliminar / Anexos — configura marca de agua y paginación por rango.';
+    ? 'Modo: Informe Final Digital — documento oficial certificado con marca de agua y paginación.'
+    : 'Modo: Preliminar / Anexos — misma protección, marcado como borrador NO oficial.';
 
-  // Toggle constancia section vs watermark/pagination sections
-  setVisible('sectionConstancia', isConstancia);
-  setVisible('sectionBasicConfig', !isConstancia);
-  setVisible('advancedToggle', !isConstancia);
-  setVisible('advancedBody', !isConstancia && state.advancedOpen);
-
-  if (isConstancia) return;
-
-  // Report number: in final always; in marca if pagination enabled or predefined text
+  // Report number: in final always; in preliminar if pagination enabled or predefined text
   setVisible('rowReportNumber',
     isFinal || state.applyPagination || state.textOption === 'predefined');
 
@@ -758,6 +638,7 @@ function renderConfigPanel() {
   // Advanced accordion open/close
   var advToggle = document.getElementById('advancedToggle');
   advToggle.classList.toggle('open', state.advancedOpen);
+  setVisible('advancedBody', state.advancedOpen);
 
   // Text option (watermark only)
   setVisible('rowTextOption', wm);
@@ -765,15 +646,11 @@ function renderConfigPanel() {
   // Custom text (watermark + custom text)
   setVisible('rowCustomText', wm && state.textOption === 'custom');
 
-  // Page range (marca only)
-  setVisible('rowPageRange', !isFinal);
-  setVisible('dividerPageRange', !isFinal);
-
   // Density/opacity (watermark only)
   setVisible('rowDensityOpacity', wm);
   setVisible('dividerDensity', wm);
 
-  // Marca extras: timestamp + multilayer (marca + watermark)
+  // Preliminar extras: timestamp (preliminar + watermark)
   setVisible('rowMarcaExtras', !isFinal && wm);
 
   // Flatten options
@@ -847,12 +724,6 @@ function renderUI() {
 // =========================================================================
 function validateConfig() {
   var errors = [];
-  if (state.mode === 'constancia') {
-    if (!state.cApplyIvory && !state.cApplyMicro && !state.cApplyWm && !state.cApplyBorder) {
-      errors.push('Selecciona al menos una capa de seguridad visual.');
-    }
-    return errors;
-  }
   if (!state.applyWatermark && !state.applyPagination) {
     errors.push('Selecciona al menos una salida: marca de agua o paginación.');
   }
@@ -865,16 +736,21 @@ function validateConfig() {
 
 function buildOptionsFromUI() {
   var currentYear = new Date().getFullYear();
+  var isPreliminar = state.mode === 'preliminar';
   var text1, text2;
   if (state.textOption === 'predefined') {
-    text1 = 'INFORME EJECUTIVA AMBIENTAL ' + currentYear;
+    // El texto de la marca codifica el estatus del documento:
+    // oficial-certificado (final) vs borrador-no-oficial (preliminar).
+    text1 = isPreliminar
+      ? 'PRELIMINAR · NO OFICIAL'
+      : 'INFORME EJECUTIVA AMBIENTAL ' + currentYear;
     text2 = state.reportNumber;
   } else {
     text1 = state.customText1 || 'MARCA DE AGUA';
     text2 = state.customText2 || 'EJECUTIVA AMBIENTAL';
   }
 
-  if (state.mode === 'marca' && state.addTimestamp && state.applyWatermark) {
+  if (isPreliminar && state.addTimestamp && state.applyWatermark) {
     var now = new Date();
     var ts = now.toLocaleString('es-ES', {
       day: '2-digit', month: '2-digit', year: 'numeric',
@@ -884,6 +760,7 @@ function buildOptionsFromUI() {
   }
 
   return {
+    mode: state.mode,
     textOption: state.textOption,
     reportNumber: state.reportNumber,
     text1: text1,
@@ -894,21 +771,9 @@ function buildOptionsFromUI() {
     shouldFlatten: state.flattenDoc,
     flatScale: parseFloat(state.flattenScale),
     flatQuality: parseFloat(state.flattenQuality),
-    multiLayerChecked: state.mode === 'marca' ? state.multiLayer : false,
-    pageFromVal: parseInt(state.pageFrom) || 1,
-    pageToVal: parseInt(state.pageTo) || 0,
     enableWatermark: state.applyWatermark,
     enablePagination: state.applyPagination,
-    includeCertificate: state.mode === 'final' ? state.includeCertificate : false,
-    secBg: {
-      applyIvory:  state.cApplyIvory,
-      applyMicro:  state.cApplyMicro,
-      microText:   state.cMicroText || 'EJECUTIVA AMBIENTAL · DISPARO EN BANCO DE PRUEBAS',
-      applyWm:     state.cApplyWm,
-      wmLine1:     state.cWmLine1 || 'BANCO DE PRUEBAS',
-      wmLine2:     state.cWmLine2 || 'EJECUTIVA AMBIENTAL',
-      applyBorder: state.cApplyBorder
-    }
+    includeCertificate: state.mode === 'final' ? state.includeCertificate : false
   };
 }
 
@@ -933,23 +798,12 @@ function syncFromForm() {
   if (textOptionEl) state.textOption = textOptionEl.value;
   state.customText1 = document.getElementById('customText1').value;
   state.customText2 = document.getElementById('customText2').value;
-  state.pageFrom = document.getElementById('pageFrom').value;
-  state.pageTo = document.getElementById('pageTo').value;
   state.density = document.getElementById('density').value;
   state.opacity = document.getElementById('opacity').value;
   state.addTimestamp = document.getElementById('addTimestamp').checked;
-  state.multiLayer = document.getElementById('multiLayer').checked;
   state.flattenDoc = document.getElementById('flattenDoc').checked;
   state.flattenScale = document.getElementById('flattenScale').value;
   state.flattenQuality = document.getElementById('flattenQuality').value;
-  // Fondo de seguridad
-  state.cApplyIvory = document.getElementById('cApplyIvory').checked;
-  state.cApplyMicro = document.getElementById('cApplyMicro').checked;
-  state.cMicroText  = document.getElementById('cMicroText').value;
-  state.cApplyWm    = document.getElementById('cApplyWm').checked;
-  state.cWmLine1    = document.getElementById('cWmLine1').value;
-  state.cWmLine2    = document.getElementById('cWmLine2').value;
-  state.cApplyBorder = document.getElementById('cApplyBorder').checked;
 }
 
 function syncToForm() {
@@ -961,23 +815,12 @@ function syncToForm() {
   if (radioEl) radioEl.checked = true;
   document.getElementById('customText1').value = state.customText1;
   document.getElementById('customText2').value = state.customText2;
-  document.getElementById('pageFrom').value = state.pageFrom;
-  document.getElementById('pageTo').value = state.pageTo;
   document.getElementById('density').value = state.density;
   document.getElementById('opacity').value = state.opacity;
   document.getElementById('addTimestamp').checked = state.addTimestamp;
-  document.getElementById('multiLayer').checked = state.multiLayer;
   document.getElementById('flattenDoc').checked = state.flattenDoc;
   document.getElementById('flattenScale').value = state.flattenScale;
   document.getElementById('flattenQuality').value = state.flattenQuality;
-  // Fondo de seguridad
-  document.getElementById('cApplyIvory').checked = state.cApplyIvory;
-  document.getElementById('cApplyMicro').checked = state.cApplyMicro;
-  document.getElementById('cMicroText').value     = state.cMicroText;
-  document.getElementById('cApplyWm').checked     = state.cApplyWm;
-  document.getElementById('cWmLine1').value       = state.cWmLine1;
-  document.getElementById('cWmLine2').value       = state.cWmLine2;
-  document.getElementById('cApplyBorder').checked = state.cApplyBorder;
 }
 
 // =========================================================================
@@ -991,11 +834,24 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-async function loadMontserratFont() {
-  var url = 'https://fonts.gstatic.com/s/montserrat/v25/JTUSjIg1_i6t8kCHKm459Wlhzg.ttf';
+// Caché de fuentes a nivel de módulo: se descargan una sola vez por sesión,
+// no una vez por archivo procesado.
+var _fontCache = {};
+async function loadFontBytes(key, url) {
+  if (_fontCache[key]) return _fontCache[key].slice(0);
   var res = await fetch(url);
-  if (!res.ok) throw new Error('No se pudo descargar Montserrat');
-  return await res.arrayBuffer();
+  if (!res.ok) throw new Error('No se pudo descargar la fuente ' + key);
+  var buf = await res.arrayBuffer();
+  _fontCache[key] = buf;
+  return buf.slice(0);
+}
+function loadMontserratFont() {
+  return loadFontBytes('montserrat-400',
+    'https://fonts.gstatic.com/s/montserrat/v25/JTUSjIg1_i6t8kCHKm459Wlhzg.ttf');
+}
+function loadMontserratBoldFont() {
+  return loadFontBytes('montserrat-700',
+    'https://fonts.gstatic.com/s/montserrat/v25/JTURjIg1_i6t8kCHKm45_dJE3gnD_g.ttf');
 }
 
 function generateQRCode(text, size, ecLevel) {
@@ -1225,77 +1081,6 @@ var qr2Text = 'DATOS DEL INFORME\n' +
   certPage.drawText('Documento generado digitalmente - ' + dateStr, { x: pgWidth / 2 - 145, y: 32, size: 7, font: font, color: PDFLib.rgb(0.5, 0.5, 0.5) });
 }
 
-// =========================================================================
-// SECURITY BACKGROUND — aplica sobre páginas existentes del PDF
-// =========================================================================
-function applySecurityBackground(page, pdfDoc, opts) {
-  var font  = opts.font;
-  var secBg = opts.secBg;
-  var sz    = page.getSize();
-  var pgW   = sz.width, pgH = sz.height;
-  var green = PDFLib.rgb(0, 86/255, 0);
-
-  // Dibujar todas las capas — pdf-lib las añade al FINAL del content stream
-  if (secBg.applyIvory) {
-    page.drawRectangle({ x: 0, y: 0, width: pgW, height: pgH, color: PDFLib.rgb(0.992, 0.988, 0.973) });
-  }
-
-  if (secBg.applyMicro && secBg.microText) {
-    var mRot = -35;
-    var mRad = mRot * Math.PI / 180;
-    var diag = Math.sqrt(pgW * pgW + pgH * pgH);
-    var stepD = 88, stepA = 220;
-    for (var d = -diag; d < diag * 2; d += stepD) {
-      for (var pos = -diag; pos < diag * 2; pos += stepA) {
-        var mx = pos * Math.cos(mRad) - d * Math.sin(mRad);
-        var my = pos * Math.sin(mRad) + d * Math.cos(mRad);
-        if (mx >= -60 && mx <= pgW + 60 && my >= -60 && my <= pgH + 60) {
-          page.drawText(secBg.microText, {
-            x: mx, y: my, size: 7, font: font,
-            color: green, opacity: 0.04, rotate: PDFLib.degrees(mRot)
-          });
-        }
-      }
-    }
-  }
-
-  if (secBg.applyWm) {
-    var wmRot = -35;
-    var wmRad = wmRot * Math.PI / 180;
-    var wmCx  = pgW / 2, wmCy = pgH / 2;
-    var wmLines  = [secBg.wmLine1, secBg.wmLine2];
-    var wmSizes  = [30, 17];
-    var wmOffsets = [18, -20];
-    for (var wi = 0; wi < 2; wi++) {
-      if (!wmLines[wi]) continue;
-      var tw = font.widthOfTextAtSize(wmLines[wi], wmSizes[wi]);
-      var tx = wmCx - (tw / 2) * Math.cos(wmRad) + wmOffsets[wi] * Math.sin(wmRad);
-      var ty = wmCy - (tw / 2) * Math.sin(wmRad) - wmOffsets[wi] * Math.cos(wmRad);
-      page.drawText(wmLines[wi], {
-        x: tx, y: ty, size: wmSizes[wi], font: font,
-        color: green, opacity: 0.03, rotate: PDFLib.degrees(wmRot)
-      });
-    }
-  }
-
-  if (secBg.applyBorder) {
-    page.drawRectangle({ x: 28, y: 28, width: pgW - 56, height: pgH - 56, borderColor: green, borderWidth: 2 });
-    page.drawRectangle({ x: 40, y: 40, width: pgW - 80, height: pgH - 80, borderColor: green, borderWidth: 0.75 });
-  }
-
-  // Mover nuestro nuevo content stream AL INICIO para que quede DETRÁS del contenido original.
-  // pdf-lib siempre apenda; aquí reordenamos para que el fondo vaya primero.
-  var contentsVal = page.node.get(PDFLib.PDFName.of('Contents'));
-  if (contentsVal && typeof contentsVal.asArray === 'function') {
-    var refs = contentsVal.asArray();
-    if (refs.length >= 2) {
-      var bgRef = refs[refs.length - 1]; // último = lo que acabamos de dibujar
-      var reordered = [bgRef].concat(refs.slice(0, refs.length - 1));
-      page.node.set(PDFLib.PDFName.of('Contents'), pdfDoc.context.obj(reordered));
-    }
-  }
-}
-
 function addFooterPageCount(page, cfg) {
   var currentPage = cfg.currentPage, totalPages = cfg.totalPages,
       reportNumber = cfg.reportNumber, font = cfg.font;
@@ -1310,13 +1095,32 @@ function addFooterPageCount(page, cfg) {
 }
 
 // =========================================================================
+// METADATA — nombre de producto unificado, aplicado una sola vez
+// =========================================================================
+var PRODUCT_NAME = 'Sistema de Proteccion y Certificacion Ejecutiva';
+function applyMetadata(doc, mode, reportNumber) {
+  if (mode === 'final') {
+    doc.setTitle('Informe Final Digital ' + reportNumber);
+    doc.setSubject('Informe certificado - ' + reportNumber);
+    doc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
+  } else {
+    doc.setTitle('Documento Preliminar - NO OFICIAL' + (reportNumber ? ' ' + reportNumber : ''));
+    doc.setSubject('Borrador / anexo con marca de agua de seguridad');
+    doc.setKeywords(['preliminar', 'borrador', 'no-oficial', 'marca-agua', 'ejecutiva-ambiental']);
+  }
+  doc.setAuthor('Ejecutiva Ambiental');
+  doc.setProducer(PRODUCT_NAME);
+  doc.setCreator('Ejecutiva Ambiental - ' + PRODUCT_NAME);
+}
+
+// =========================================================================
 // PROCESS SINGLE PDF
 // =========================================================================
 async function processSinglePDF(file, opts) {
-  var reportNumber = opts.reportNumber, text1 = opts.text1, text2 = opts.text2,
+  var mode = opts.mode,
+      reportNumber = opts.reportNumber, text1 = opts.text1, text2 = opts.text2,
       baseOpacity = opts.baseOpacity, config = opts.config,
       shouldFlatten = opts.shouldFlatten, flatScale = opts.flatScale, flatQuality = opts.flatQuality,
-      multiLayerChecked = opts.multiLayerChecked, pageFromVal = opts.pageFromVal, pageToVal = opts.pageToVal,
       enableWatermark = opts.enableWatermark, enablePagination = opts.enablePagination,
       includeCertificate = opts.includeCertificate;
 
@@ -1327,7 +1131,13 @@ async function processSinglePDF(file, opts) {
   try {
     var mont = await loadMontserratFont();
     font = await pdfDoc.embedFont(mont, { subset: true });
-    fontBold = font;
+    // Negrita real: variante 700 embebida; si falla, se usa Helvetica-Bold.
+    try {
+      var montBold = await loadMontserratBoldFont();
+      fontBold = await pdfDoc.embedFont(montBold, { subset: true });
+    } catch (_b) {
+      fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    }
   } catch (_) {
     font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
     fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
@@ -1339,74 +1149,40 @@ async function processSinglePDF(file, opts) {
 
   var downloadName;
 
-  if (state.mode === 'constancia') {
-    var allPages = pdfDoc.getPages();
-    for (var si = 0; si < allPages.length; si++) {
-      applySecurityBackground(allPages[si], pdfDoc, { font: font, secBg: opts.secBg });
+  // Ambos modos comparten el mismo motor de protección (watermark 3 capas +
+  // paginación). La única diferencia es que "final" inserta la página de
+  // certificado y excluye esa página de la numeración.
+  var pages = pdfDoc.getPages();
+  if (enableWatermark) {
+    for (var i = 0; i < pages.length; i++) {
+      applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
     }
-    pdfDoc.setTitle('Documento con Fondo de Seguridad Institucional');
-    pdfDoc.setAuthor('Ejecutiva Ambiental');
-    pdfDoc.setSubject('Papel de seguridad - Disparo en banco de pruebas');
-    pdfDoc.setKeywords(['seguridad', 'banco-de-pruebas', 'ejecutiva-ambiental']);
-    pdfDoc.setProducer('Sistema de Certificacion Digital SEA');
-    pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-    downloadName = 'SEG - ' + file.name;
-
-  } else if (state.mode === 'final') {
-    var pages = pdfDoc.getPages();
-    if (enableWatermark) {
-      for (var i = 0; i < pages.length; i++) {
-        applyWatermark(pages[i], Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
-      }
-    }
-    if (includeCertificate) {
-      var totalPages = pages.length;
-      var certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
-      await buildCertificationPage(certPage, pdfDoc, { font: font, fontBold: fontBold, reportNumber: reportNumber, totalPages: totalPages });
-      if (enableWatermark) {
-        applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
-      }
-    }
-    if (enablePagination) {
-      var finalPages = pdfDoc.getPages();
-      var certPageIndex = includeCertificate ? 1 : -1;
-      var numberedTotal = includeCertificate ? finalPages.length - 1 : finalPages.length;
-      var numberedPage = 0;
-      for (var j = 0; j < finalPages.length; j++) {
-        if (j === certPageIndex) continue;
-        numberedPage++;
-        addFooterPageCount(finalPages[j], { currentPage: numberedPage, totalPages: numberedTotal, reportNumber: reportNumber, font: font });
-      }
-    }
-    pdfDoc.setTitle('Informe Final Digital ' + reportNumber);
-    pdfDoc.setAuthor('Ejecutiva Ambiental');
-    pdfDoc.setSubject('Informe certificado - ' + reportNumber);
-    pdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
-    pdfDoc.setProducer('Sistema de Certificacion Digital SEA');
-    pdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-    downloadName = file.name;
-
-  } else {
-    var pages2 = pdfDoc.getPages();
-    var totalPageCount = pages2.length;
-    var pageFrom = Math.max(1, Math.min(pageFromVal, totalPageCount));
-    var pageTo = Math.max(pageFrom, Math.min(pageToVal || totalPageCount, totalPageCount));
-    for (var k = pageFrom - 1; k < pageTo; k++) {
-      if (enableWatermark) {
-        applyWatermark(pages2[k], Object.assign({}, wmBase, { layerMode: 'simple', multiLayer: multiLayerChecked }));
-      }
-      if (enablePagination) {
-        addFooterPageCount(pages2[k], { currentPage: k + 1, totalPages: totalPageCount, reportNumber: reportNumber || 'N/A', font: font });
-      }
-    }
-    pdfDoc.setTitle('Documento Protegido con Marca de Agua');
-    pdfDoc.setAuthor('Sistema de Proteccion SEA');
-    pdfDoc.setSubject('Documento con marca de agua de seguridad');
-    pdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
-    pdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
-    pdfDoc.setCreator('Herramienta de Proteccion Documental');
-    downloadName = 'Preliminar - ' + file.name;
   }
+
+  var includeCert = mode === 'final' && includeCertificate;
+  if (includeCert) {
+    var totalPages = pages.length;
+    var certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
+    await buildCertificationPage(certPage, pdfDoc, { font: font, fontBold: fontBold, reportNumber: reportNumber, totalPages: totalPages });
+    if (enableWatermark) {
+      applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
+    }
+  }
+
+  if (enablePagination) {
+    var finalPages = pdfDoc.getPages();
+    var certPageIndex = includeCert ? 1 : -1;
+    var numberedTotal = includeCert ? finalPages.length - 1 : finalPages.length;
+    var numberedPage = 0;
+    for (var j = 0; j < finalPages.length; j++) {
+      if (j === certPageIndex) continue;
+      numberedPage++;
+      addFooterPageCount(finalPages[j], { currentPage: numberedPage, totalPages: numberedTotal, reportNumber: reportNumber || 'N/A', font: font });
+    }
+  }
+
+  applyMetadata(pdfDoc, mode, reportNumber);
+  downloadName = mode === 'final' ? file.name : 'Preliminar - ' + file.name;
 
   var finalPdfDoc = pdfDoc;
   if (shouldFlatten) {
@@ -1419,28 +1195,8 @@ async function processSinglePDF(file, opts) {
           'Aplanando "' + file.name + '" – pág. ' + current + ' de ' + total + '...';
       }
     });
-    if (state.mode === 'constancia') {
-      finalPdfDoc.setTitle('Documento con Fondo de Seguridad Institucional');
-      finalPdfDoc.setAuthor('Ejecutiva Ambiental');
-      finalPdfDoc.setSubject('Papel de seguridad - Disparo en banco de pruebas');
-      finalPdfDoc.setKeywords(['seguridad', 'banco-de-pruebas', 'ejecutiva-ambiental']);
-      finalPdfDoc.setProducer('Sistema de Certificacion Digital SEA');
-      finalPdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-    } else if (state.mode === 'final') {
-      finalPdfDoc.setTitle('Informe Final Digital ' + reportNumber);
-      finalPdfDoc.setAuthor('Ejecutiva Ambiental');
-      finalPdfDoc.setSubject('Informe certificado - ' + reportNumber);
-      finalPdfDoc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
-      finalPdfDoc.setProducer('Sistema de Certificacion Digital SEA');
-      finalPdfDoc.setCreator('Ejecutiva Ambiental - Herramienta de Certificacion');
-    } else {
-      finalPdfDoc.setTitle('Documento Protegido con Marca de Agua');
-      finalPdfDoc.setAuthor('Sistema de Proteccion SEA');
-      finalPdfDoc.setSubject('Documento con marca de agua de seguridad');
-      finalPdfDoc.setKeywords(['protegido', 'marca-agua', 'no-editable']);
-      finalPdfDoc.setProducer('SEA-Marca v3.0 - Sistema Unificado');
-      finalPdfDoc.setCreator('Herramienta de Proteccion Documental');
-    }
+    // El aplanado crea un documento nuevo: reaplicamos la metadata.
+    applyMetadata(finalPdfDoc, mode, reportNumber);
   }
 
   var creationDate = new Date();
@@ -1518,12 +1274,8 @@ function bindEvents() {
     state.mode = 'final';
     renderModeCards();
   });
-  document.getElementById('cardMarca').addEventListener('click', function() {
-    state.mode = 'marca';
-    renderModeCards();
-  });
-  document.getElementById('cardConstancia').addEventListener('click', function() {
-    state.mode = 'constancia';
+  document.getElementById('cardPreliminar').addEventListener('click', function() {
+    state.mode = 'preliminar';
     renderModeCards();
   });
   document.getElementById('btnStep1Next').addEventListener('click', function() {
