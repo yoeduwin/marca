@@ -7,6 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     /* ===================== BASE ===================== */
@@ -252,8 +253,39 @@
     }
     .step-nav.end { justify-content: flex-end; }
 
+    /* ===================== AUTH BAR ===================== */
+    .auth-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; flex-wrap: wrap;
+      padding: 9px 32px; background: #eef5ef;
+      border-bottom: 1px solid #dce9de; font-size: 0.8rem;
+    }
+    .auth-bar .auth-info { display: flex; align-items: center; gap: 8px; color: #4a5a4d; }
+    .auth-dot { width: 8px; height: 8px; border-radius: 50%; background: #c0392b; flex-shrink: 0; }
+    .auth-dot.on { background: #00a043; }
+    .auth-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .auth-actions input {
+      padding: 6px 9px; border: 1px solid #cdd8cf; border-radius: 7px;
+      font-size: 0.78rem; font-family: inherit; width: 148px;
+    }
+    .btn-mini {
+      padding: 6px 12px; border: none; border-radius: 7px; cursor: pointer;
+      background: #005600; color: #fff; font-size: 0.76rem; font-weight: 600;
+      font-family: inherit;
+    }
+    .btn-mini.ghost { background: transparent; color: #005600; text-decoration: underline; padding: 6px 4px; }
+    .auth-note { font-size: 0.72rem; color: #c0392b; }
+
+    /* Estado de registro en resultados */
+    .r-reg { font-size: 0.74rem; margin-top: 3px; display: flex; align-items: center; gap: 5px; }
+    .r-reg.ok { color: #00812f; }
+    .r-reg.warn { color: #b8860b; }
+    .r-reg.err { color: #c0392b; }
+
     @media (max-width: 700px) {
       .mode-grid { grid-template-columns: 1fr; }
+      .auth-bar { padding: 9px 16px; }
+      .auth-actions input { width: 120px; }
     }
     @media (max-width: 600px) {
       .stepper { padding: 14px 16px 10px; }
@@ -270,6 +302,19 @@
   <div class="header">
     <h1>SISTEMA DE PROTECCIÓN Y CERTIFICACIÓN EJECUTIVA</h1>
     <p>Ejecutiva Ambiental · Seguridad e Higiene</p>
+  </div>
+
+  <!-- AUTH BAR (registro de folios para verificación) -->
+  <div class="auth-bar" id="authBar">
+    <div class="auth-info">
+      <span class="auth-dot" id="authDot"></span>
+      <span id="authInfoText">Verificación de folios: sin sesión</span>
+    </div>
+    <div class="auth-actions" id="authActions">
+      <input type="email" id="authEmail" placeholder="correo" autocomplete="username" />
+      <input type="password" id="authPass" placeholder="contraseña" autocomplete="current-password" />
+      <button class="btn-mini" id="btnAuthLogin" type="button">Iniciar sesión</button>
+    </div>
   </div>
 
   <!-- STEPPER -->
@@ -550,6 +595,111 @@
 </div><!-- /container -->
 
 <script>
+// =========================================================================
+// CONFIGURACIÓN DE VERIFICACIÓN (Supabase)
+// =========================================================================
+// URL pública y llave PUBLISHABLE (segura para el navegador con RLS activo).
+// NUNCA pongas aquí la llave "service_role" / "secret".
+var SUPABASE_URL = 'https://zwllvbmiyzblahtxizbk.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_eMm-wi8-v4zx0LEa3rzlSw_KAnWXca8';
+// URL pública donde se publica verificar.html (a donde apunta el QR).
+// Cámbiala si el sitio vive en otro dominio (p. ej. https://ejecutivambiental.com/verificar.html).
+var VERIFY_BASE_URL = 'https://yoeduwin.github.io/marca/verificar.html';
+
+var supa = null;
+try {
+  if (window.supabase && SUPABASE_URL.indexOf('http') === 0) {
+    supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+} catch (e) { console.warn('Supabase no inicializado:', e); }
+
+// SHA-256 en hexadecimal de un ArrayBuffer/Uint8Array (100% en el navegador).
+async function sha256Hex(bytes) {
+  var buf = bytes instanceof ArrayBuffer ? bytes : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  var digest = await crypto.subtle.digest('SHA-256', buf);
+  var arr = Array.from(new Uint8Array(digest));
+  return arr.map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+// =========================================================================
+// SESIÓN (para registrar folios verificables)
+// =========================================================================
+var authState = { user: null };
+
+async function refreshAuth() {
+  if (!supa) { renderAuthBar(); return; }
+  try {
+    var res = await supa.auth.getSession();
+    authState.user = (res && res.data && res.data.session) ? res.data.session.user : null;
+  } catch (e) { authState.user = null; }
+  renderAuthBar();
+}
+
+function renderAuthBar() {
+  var dot = document.getElementById('authDot');
+  var info = document.getElementById('authInfoText');
+  var actions = document.getElementById('authActions');
+  if (!dot) return;
+  if (!supa) {
+    dot.classList.remove('on');
+    info.textContent = 'Verificación no configurada (revisa SUPABASE_URL / KEY).';
+    actions.innerHTML = '';
+    return;
+  }
+  if (authState.user) {
+    dot.classList.add('on');
+    info.textContent = 'Sesión activa: ' + authState.user.email + ' · los informes finales se registrarán para verificación.';
+    actions.innerHTML = '<button class="btn-mini ghost" id="btnAuthLogout" type="button">Cerrar sesión</button>';
+    document.getElementById('btnAuthLogout').addEventListener('click', doLogout);
+  } else {
+    dot.classList.remove('on');
+    info.textContent = 'Inicia sesión para registrar folios verificables (solo tú).';
+    actions.innerHTML =
+      '<input type="email" id="authEmail" placeholder="correo" autocomplete="username" />' +
+      '<input type="password" id="authPass" placeholder="contraseña" autocomplete="current-password" />' +
+      '<button class="btn-mini" id="btnAuthLogin" type="button">Iniciar sesión</button>';
+    document.getElementById('btnAuthLogin').addEventListener('click', doLogin);
+  }
+}
+
+async function doLogin() {
+  if (!supa) return;
+  var email = (document.getElementById('authEmail').value || '').trim();
+  var pass = document.getElementById('authPass').value || '';
+  if (!email || !pass) { alert('Escribe correo y contraseña.'); return; }
+  var btn = document.getElementById('btnAuthLogin');
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    var res = await supa.auth.signInWithPassword({ email: email, password: pass });
+    if (res.error) throw res.error;
+    authState.user = res.data.user;
+  } catch (e) {
+    alert('No se pudo iniciar sesión: ' + (e.message || e));
+  }
+  renderAuthBar();
+}
+
+async function doLogout() {
+  if (!supa) return;
+  try { await supa.auth.signOut(); } catch (e) {}
+  authState.user = null;
+  renderAuthBar();
+}
+
+// Registra un informe final para verificación pública por folio.
+// Devuelve { ok:true } o { ok:false, reason:'...' }.
+async function registerInforme(row) {
+  if (!supa) return { ok: false, reason: 'no-config' };
+  if (!authState.user) return { ok: false, reason: 'no-session' };
+  try {
+    var res = await supa.from('informes').insert(row);
+    if (res.error) return { ok: false, reason: res.error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: (e && e.message) || 'error' };
+  }
+}
+
 // =========================================================================
 // STATE
 // =========================================================================
@@ -986,99 +1136,147 @@ async function buildCertificationPage(certPage, pdfDoc, opts) {
   var font = opts.font, fontBold = opts.fontBold,
       reportNumber = opts.reportNumber, totalPages = opts.totalPages;
   var sz = certPage.getSize();
-  var pgWidth = sz.width, pgHeight = sz.height;
+  var W = sz.width, H = sz.height;
 
-  certPage.drawRectangle({ x: 35, y: 35, width: pgWidth - 70, height: pgHeight - 70, borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 3 });
-  certPage.drawRectangle({ x: 45, y: 45, width: pgWidth - 90, height: pgHeight - 90, borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 1 });
+  // ---- Paleta ----
+  var greenDark = PDFLib.rgb(0, 56/255, 0);
+  var green     = PDFLib.rgb(0, 86/255, 0);
+  var gold      = PDFLib.rgb(0.70, 0.56, 0.20);
+  var ink       = PDFLib.rgb(0.13, 0.13, 0.13);
+  var muted     = PDFLib.rgb(0.42, 0.42, 0.42);
+  var panelBg   = PDFLib.rgb(0.975, 0.985, 0.975);
+  var line      = PDFLib.rgb(0.80, 0.84, 0.80);
 
-  certPage.drawText('EJECUTIVA AMBIENTAL', { x: pgWidth / 2 - 130, y: pgHeight - 80, size: 16, font: fontBold, color: PDFLib.rgb(0, 56/255, 0) });
-  certPage.drawText('Seguridad e higiene', { x: pgWidth / 2 - 85, y: pgHeight - 100, size: 10, font: font, color: PDFLib.rgb(0.3, 0.3, 0.3) });
-  certPage.drawLine({ start: { x: 70, y: pgHeight - 120 }, end: { x: pgWidth - 70, y: pgHeight - 120 }, thickness: 2, color: PDFLib.rgb(0, 56/255, 0) });
-
-  certPage.drawText('CERTIFICACION DE AUTENTICIDAD E INTEGRIDAD', { x: pgWidth / 2 - 220, y: pgHeight - 160, size: 16, font: fontBold, color: PDFLib.rgb(0, 0, 0) });
-
-  var yPos = pgHeight - 200;
-  certPage.drawText('El presente documento fue realizado, emitido y autorizado exclusivamente por Ejecutiva Ambiental', { x: 70, y: yPos, size: 11, font: font, color: PDFLib.rgb(0.15, 0.15, 0.15) });
-  yPos -= 27;
-  certPage.drawText('Este documento goza de presuncion de integridad unicamente en su totalidad, al contar con', { x: 70, y: yPos, size: 10, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
-  yPos -= 15;
-  certPage.drawText(totalPages + ' paginas numeradas y protegidas mediante marca de agua digital. Cualquier alteracion,', { x: 70, y: yPos, size: 10, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
-  yPos -= 15;
-  certPage.drawText('sustraccion o adicion de paginas invalida la autenticidad del documento completo.', { x: 70, y: yPos, size: 10, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
-
-  yPos -= 20;
-  certPage.drawRectangle({ x: 65, y: yPos - 75, width: pgWidth - 130, height: 90, color: PDFLib.rgb(0.97, 0.98, 0.97), borderColor: PDFLib.rgb(0, 86/255, 0), borderWidth: 1 });
-  certPage.drawText('INFORMACION DEL INFORME', { x: 75, y: yPos - 20, size: 10, font: fontBold, color: PDFLib.rgb(0, 86/255, 0) });
-  certPage.drawText('Numero de Informe: ' + reportNumber, { x: 75, y: yPos - 40, size: 10, font: font, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+  // ---- Helpers ----
+  function tW(s, size, f) { return f.widthOfTextAtSize(s, size); }
+  function center(s, y, size, f, color, extra) {
+    var o = { x: (W - tW(s, size, f)) / 2, y: y, size: size, font: f, color: color };
+    if (extra) { for (var k in extra) o[k] = extra[k]; }
+    certPage.drawText(s, o);
+  }
+  function wrap(text, size, f, maxW) {
+    var words = text.split(' '), lines = [], cur = '';
+    for (var i = 0; i < words.length; i++) {
+      var test = cur ? cur + ' ' + words[i] : words[i];
+      if (tW(test, size, f) > maxW && cur) { lines.push(cur); cur = words[i]; }
+      else { cur = test; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
 
   var today = new Date();
   var dateStr = today.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-  certPage.drawText('Fecha de Emision: ' + dateStr, { x: 75, y: yPos - 60, size: 10, font: font, color: PDFLib.rgb(0.1, 0.1, 0.1) });
-  certPage.drawText('Total de Paginas: ' + totalPages, { x: pgWidth / 2 + 20, y: yPos - 60, size: 10, font: font, color: PDFLib.rgb(0.1, 0.1, 0.1) });
 
-  yPos -= 110;
-  certPage.drawText('ADVERTENCIA DE SEGURIDAD:', { x: 70, y: yPos, size: 9, font: fontBold, color: PDFLib.rgb(0.6, 0, 0) });
-  yPos -= 15;
-  certPage.drawText('Este documento contiene multiples capas de proteccion digital, incluyendo marcas de', { x: 70, y: yPos, size: 8, font: font, color: PDFLib.rgb(0.4, 0.4, 0.4) });
-  yPos -= 11;
-  certPage.drawText('agua visibles e invisibles. La reproduccion parcial o total sin autorizacion esta prohibida.', { x: 70, y: yPos, size: 8, font: font, color: PDFLib.rgb(0.4, 0.4, 0.4) });
+  // ================= MARCO =================
+  certPage.drawRectangle({ x: 26, y: 26, width: W - 52, height: H - 52, borderColor: green, borderWidth: 2.5 });
+  certPage.drawRectangle({ x: 34, y: 34, width: W - 68, height: H - 68, borderColor: gold, borderWidth: 0.8 });
+  // Esquinas doradas (corchetes)
+  var c = 42, cl = 16;
+  var corners = [[c, H - c, 1, -1], [W - c, H - c, -1, -1], [c, c, 1, 1], [W - c, c, -1, 1]];
+  for (var ci = 0; ci < corners.length; ci++) {
+    var cx = corners[ci][0], cy = corners[ci][1], sx = corners[ci][2], sy = corners[ci][3];
+    certPage.drawLine({ start: { x: cx, y: cy }, end: { x: cx + cl * sx, y: cy }, thickness: 1.2, color: gold });
+    certPage.drawLine({ start: { x: cx, y: cy }, end: { x: cx, y: cy + cl * sy }, thickness: 1.2, color: gold });
+  }
 
-  yPos -= 20;
-  certPage.drawText('INFORMACION DE CONTACTO', { x: 70, y: yPos, size: 9, font: fontBold, color: PDFLib.rgb(0, 86/255, 0) });
-  yPos -= 18;
-  certPage.drawText('Telefono: 222 941 7295', { x: 70, y: yPos, size: 9, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
-  yPos -= 15;
-  certPage.drawText('Web: www.ejecutivambiental.com', { x: 70, y: yPos, size: 9, font: font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+  // ================= SELLO / MONOGRAMA =================
+  var sealCx = W / 2, sealCy = H - 92;
+  certPage.drawEllipse({ x: sealCx, y: sealCy, xScale: 27, yScale: 27, color: PDFLib.rgb(1,1,1), borderColor: green, borderWidth: 2 });
+  certPage.drawEllipse({ x: sealCx, y: sealCy, xScale: 22, yScale: 22, borderColor: gold, borderWidth: 0.8 });
+  certPage.drawText('EA', { x: sealCx - tW('EA', 20, fontBold) / 2, y: sealCy - 7, size: 20, font: fontBold, color: green });
 
-  // --- QR 1: sitio web (verificación) ---
-  var qrSize = 100;
-  var qrPad = 5;
-  // Dos QRs lado a lado en la zona inferior derecha
-  // QR1 borde izquierdo: pgWidth - 277 = 335; QR2 borde derecho: 335+110+6+110 = 561 (< borde interno 567)
-  var qr1X = pgWidth - 272;  // 340 — posición imagen QR1
-  var qr1Y = 148;
-  var qr2X = qr1X + qrSize + qrPad * 2 + 6;  // 340+100+10+6 = 456 — posición imagen QR2
-  var qr2Y = 148;
+  // ================= ENCABEZADO =================
+  center('EJECUTIVA AMBIENTAL', H - 142, 16, fontBold, greenDark);
+  center('S E G U R I D A D   E   H I G I E N E', H - 158, 7.5, font, muted);
+  certPage.drawLine({ start: { x: 150, y: H - 172 }, end: { x: W - 150, y: H - 172 }, thickness: 0.8, color: gold });
+  certPage.drawEllipse({ x: W / 2, y: H - 172, xScale: 2.4, yScale: 2.4, color: gold });
 
-  var qrWebDataUrl = generateQRCode('https://www.ejecutivambiental.com', 200);
-  var qrWebBytes = await fetch(qrWebDataUrl).then(function(res) { return res.arrayBuffer(); });
-  var qrWebImage = await pdfDoc.embedPng(qrWebBytes);
+  // ================= TÍTULO =================
+  center('CERTIFICADO DE AUTENTICIDAD', H - 205, 21, fontBold, ink);
+  var subLines = wrap('Ejecutiva Ambiental certifica la autenticidad e integridad del informe identificado a continuacion, verificable en linea.', 10, font, W - 180);
+  var subY = H - 226;
+  for (var s = 0; s < subLines.length; s++) { center(subLines[s], subY, 10, font, muted); subY -= 14; }
 
+  // ================= PANEL DE DATOS =================
+  var pX = 70, pW = W - 140, pTop = H - 268, pH = 104, pY = pTop - pH;
+  certPage.drawRectangle({ x: pX, y: pY, width: pW, height: pH, color: panelBg, borderColor: gold, borderWidth: 1 });
+  certPage.drawRectangle({ x: pX, y: pY, width: 4, height: pH, color: green });
 
-// Reemplaza la variable qr2Text actual por esta:
-var qr2Text = 'DATOS DEL INFORME\n' +
-  '-------------------\n' +
-  'Folio: ' + reportNumber + '\n' +
-  'Emite: Solucion en Ingenieria Ejecutiva Ambiental.\n' +
-  'Si tiene dudas, llame al 222 - 941 - 72 95';
-  
-  // Canvas 400px + corrección 'L' (menos redundancia → versión QR más baja → módulos más grandes y escaneables)
-  var qrDataDataUrl = generateQRCode(qr2Text, 400, 'L');
-  var qrDataBytes = await fetch(qrDataDataUrl).then(function(res) { return res.arrayBuffer(); });
-  var qrDataImage = await pdfDoc.embedPng(qrDataBytes);
+  certPage.drawText('FOLIO DEL INFORME', { x: pX + 20, y: pTop - 22, size: 8, font: fontBold, color: gold });
+  certPage.drawText(reportNumber || 'S/N', { x: pX + 20, y: pTop - 46, size: 18, font: fontBold, color: green });
+  certPage.drawLine({ start: { x: pX + 20, y: pTop - 60 }, end: { x: pX + pW - 20, y: pTop - 60 }, thickness: 0.6, color: line });
 
-  var green = PDFLib.rgb(0, 86/255, 0);
-  var gray = PDFLib.rgb(0.4, 0.4, 0.4);
+  certPage.drawText('FECHA DE EMISION', { x: pX + 20, y: pTop - 76, size: 7.5, font: fontBold, color: gold });
+  certPage.drawText(dateStr, { x: pX + 20, y: pTop - 92, size: 10, font: font, color: ink });
+  certPage.drawText('TOTAL DE PAGINAS', { x: pX + 250, y: pTop - 76, size: 7.5, font: fontBold, color: gold });
+  certPage.drawText(String(totalPages), { x: pX + 250, y: pTop - 92, size: 10, font: font, color: ink });
 
-  // Borde y imagen QR1
-  certPage.drawRectangle({ x: qr1X - qrPad, y: qr1Y - qrPad, width: qrSize + qrPad * 2, height: qrSize + qrPad * 2, borderColor: green, borderWidth: 2 });
-  certPage.drawImage(qrWebImage, { x: qr1X, y: qr1Y, width: qrSize, height: qrSize });
-  // Etiqueta QR1 (dos líneas bajo el borde)
-  certPage.drawText('Escanea para verificar', { x: qr1X - 1, y: qr1Y - 14, size: 7, font: fontBold, color: green });
-  certPage.drawText('autenticidad del doc.', { x: qr1X + 1, y: qr1Y - 24, size: 6.5, font: font, color: gray });
+  // ================= VERIFICACIÓN + QR =================
+  var verifyUrl = (typeof VERIFY_BASE_URL !== 'undefined' ? VERIFY_BASE_URL : 'https://www.ejecutivambiental.com') +
+                  '?folio=' + encodeURIComponent(reportNumber || '');
+  var qrDataUrl = generateQRCode(verifyUrl, 420, 'M');
+  var qrBytes = await fetch(qrDataUrl).then(function(r) { return r.arrayBuffer(); });
+  var qrImg = await pdfDoc.embedPng(qrBytes);
 
-  // Borde y imagen QR2
-  certPage.drawRectangle({ x: qr2X - qrPad, y: qr2Y - qrPad, width: qrSize + qrPad * 2, height: qrSize + qrPad * 2, borderColor: green, borderWidth: 2 });
-  certPage.drawImage(qrDataImage, { x: qr2X, y: qr2Y, width: qrSize, height: qrSize });
-  // Etiqueta QR2 (dos líneas bajo el borde)
-  certPage.drawText('Escanea para ver', { x: qr2X + 4, y: qr2Y - 14, size: 7, font: fontBold, color: green });
-  certPage.drawText('datos del informe', { x: qr2X + 3, y: qr2Y - 24, size: 6.5, font: font, color: gray });
+  var qrSize = 112, qrPad = 7;
+  var qrBoxX = W - 70 - (qrSize + qrPad * 2);
+  var qrX = qrBoxX + qrPad;
+  var qrTop = pY - 22;            // debajo del panel
+  var qrY = qrTop - qrSize;
+  certPage.drawRectangle({ x: qrBoxX, y: qrY - qrPad, width: qrSize + qrPad * 2, height: qrSize + qrPad * 2, color: PDFLib.rgb(1,1,1), borderColor: green, borderWidth: 1.6 });
+  certPage.drawRectangle({ x: qrBoxX + 3, y: qrY - qrPad + 3, width: qrSize + qrPad * 2 - 6, height: qrSize + qrPad * 2 - 6, borderColor: gold, borderWidth: 0.6 });
+  certPage.drawImage(qrImg, { x: qrX, y: qrY, width: qrSize, height: qrSize });
+  var qrCx = qrBoxX + (qrSize + qrPad * 2) / 2;
+  certPage.drawText('ESCANEA PARA VERIFICAR', { x: qrCx - tW('ESCANEA PARA VERIFICAR', 7.5, fontBold) / 2, y: qrY - qrPad - 12, size: 7.5, font: fontBold, color: green });
+  certPage.drawText('Autenticidad e integridad', { x: qrCx - tW('Autenticidad e integridad', 6.5, font) / 2, y: qrY - qrPad - 22, size: 6.5, font: font, color: muted });
 
-  var signY = 85;
-  certPage.drawText('_____________________________________________________', { x: 70, y: signY, size: 10, font: font, color: PDFLib.rgb(0.6, 0.6, 0.6) });
-  certPage.drawText('SOLUCION EN INGENIERIA EJECUTIVA AMBIENTAL, S.A. DE C.V.', { x: 70, y: signY - 20, size: 9, font: fontBold, color: PDFLib.rgb(0, 86/255, 0) });
-  certPage.drawLine({ start: { x: 70, y: 50 }, end: { x: pgWidth - 70, y: 50 }, thickness: 1, color: PDFLib.rgb(0.8, 0.8, 0.8) });
-  certPage.drawText('Documento generado digitalmente - ' + dateStr, { x: pgWidth / 2 - 145, y: 32, size: 7, font: font, color: PDFLib.rgb(0.5, 0.5, 0.5) });
+  // Columna izquierda: qué confirma
+  certPage.drawText('VERIFICACION EN LINEA', { x: pX, y: qrTop - 4, size: 11, font: fontBold, color: greenDark });
+  certPage.drawLine({ start: { x: pX, y: qrTop - 12 }, end: { x: pX + 120, y: qrTop - 12 }, thickness: 1, color: gold });
+  var bullets = [
+    'Confirma que el folio fue emitido por Ejecutiva Ambiental.',
+    'Comprueba la integridad del archivo original (sin paginas alteradas).',
+    'Disponible las 24 horas escaneando el codigo QR de la derecha.'
+  ];
+  var bY = qrTop - 30, bMaxW = qrBoxX - pX - 24;
+  for (var b = 0; b < bullets.length; b++) {
+    certPage.drawText('-', { x: pX, y: bY, size: 9, font: fontBold, color: gold });
+    var bl = wrap(bullets[b], 8.5, font, bMaxW);
+    for (var bi = 0; bi < bl.length; bi++) { certPage.drawText(bl[bi], { x: pX + 10, y: bY, size: 8.5, font: font, color: ink }); bY -= 12; }
+    bY -= 4;
+  }
+
+  // ================= NOTA DE INTEGRIDAD =================
+  var noteTop = qrY - qrPad - 40;
+  var note = 'Este documento goza de presuncion de integridad unicamente en su totalidad, al contar con ' +
+    totalPages + ' paginas numeradas y protegidas mediante marca de agua digital. Cualquier alteracion, ' +
+    'sustraccion o adicion de paginas invalida la autenticidad del documento completo.';
+  var nLines = wrap(note, 8, font, W - 140);
+  for (var n = 0; n < nLines.length; n++) { certPage.drawText(nLines[n], { x: 70, y: noteTop - n * 11, size: 8, font: font, color: muted }); }
+
+  // ================= FIRMA + SELLO =================
+  // Sello circular tenue (izquierda)
+  var stCx = 150, stCy = 150;
+  certPage.drawEllipse({ x: stCx, y: stCy, xScale: 38, yScale: 38, borderColor: green, borderWidth: 1.3, borderOpacity: 0.55 });
+  certPage.drawEllipse({ x: stCx, y: stCy, xScale: 31, yScale: 31, borderColor: gold, borderWidth: 0.7, borderOpacity: 0.5 });
+  certPage.drawText('DOCUMENTO', { x: stCx - tW('DOCUMENTO', 6, fontBold) / 2, y: stCy + 14, size: 6, font: fontBold, color: green, opacity: 0.6 });
+  certPage.drawText('EA', { x: stCx - tW('EA', 15, fontBold) / 2, y: stCy - 5, size: 15, font: fontBold, color: green, opacity: 0.65 });
+  certPage.drawText('CERTIFICADO', { x: stCx - tW('CERTIFICADO', 6, fontBold) / 2, y: stCy - 20, size: 6, font: fontBold, color: green, opacity: 0.6 });
+
+  // Firma (derecha)
+  var sgX1 = 330, sgX2 = W - 70, sgMid = (sgX1 + sgX2) / 2;
+  certPage.drawLine({ start: { x: sgX1, y: 152 }, end: { x: sgX2, y: 152 }, thickness: 0.8, color: muted });
+  certPage.drawText('Firma autorizada', { x: sgMid - tW('Firma autorizada', 8, font) / 2, y: 138, size: 8, font: font, color: muted });
+  var legal1 = 'SOLUCION EN INGENIERIA EJECUTIVA AMBIENTAL';
+  var legal2 = 'S.A. DE C.V.';
+  certPage.drawText(legal1, { x: sgMid - tW(legal1, 7.5, fontBold) / 2, y: 124, size: 7.5, font: fontBold, color: green });
+  certPage.drawText(legal2, { x: sgMid - tW(legal2, 7.5, fontBold) / 2, y: 114, size: 7.5, font: fontBold, color: green });
+
+  // ================= PIE =================
+  certPage.drawLine({ start: { x: 70, y: 64 }, end: { x: W - 70, y: 64 }, thickness: 0.8, color: gold });
+  center('Documento generado digitalmente el ' + dateStr + ' - Verificable en linea - www.ejecutivambiental.com', 50, 7, font, muted);
+  center('Folio ' + (reportNumber || 'S/N') + ' - Certificado por Ejecutiva Ambiental - Tel. 222 941 7295', 40, 6.5, font, muted);
 }
 
 function addFooterPageCount(page, cfg) {
@@ -1208,7 +1406,20 @@ async function processSinglePDF(file, opts) {
   var url = URL.createObjectURL(blob);
   state.blobURLs.push(url);
 
-  return { downloadName: downloadName, url: url, sizeMB: (blob.size / (1024 * 1024)).toFixed(2) };
+  // Huella SHA-256 del archivo final EXACTO que se descarga (para verificación).
+  var sha256 = '';
+  try { sha256 = await sha256Hex(out); } catch (e) { console.warn('No se pudo calcular SHA-256:', e); }
+
+  return {
+    downloadName: downloadName,
+    url: url,
+    sizeMB: (blob.size / (1024 * 1024)).toFixed(2),
+    // Datos de verificación (solo relevantes para informe final con certificado)
+    verifiable: includeCert,
+    folio: reportNumber || '',
+    numPaginas: finalPdfDoc.getPageCount(),
+    sha256: sha256
+  };
 }
 
 // =========================================================================
@@ -1236,15 +1447,42 @@ async function processFiles() {
       results.push(await processSinglePDF(files[i], opts));
     }
 
+    // ---- Registro de verificación (informes finales con certificado) ----
+    for (var r = 0; r < results.length; r++) {
+      var res = results[r];
+      if (!res.verifiable || !res.folio || !res.sha256) continue;
+      if (!supa) {
+        res.regStatus = { type: 'warn', msg: 'Verificación no configurada (revisa Supabase).' };
+      } else if (!authState.user) {
+        res.regStatus = { type: 'warn', msg: 'No registrado — inicia sesión (barra superior) para habilitar la verificación.' };
+      } else {
+        document.getElementById('processingNote').textContent = 'Registrando folio ' + res.folio + '...';
+        var reg = await registerInforme({
+          folio: res.folio, sha256: res.sha256,
+          num_paginas: res.numPaginas, estado: 'activo'
+        });
+        res.regStatus = reg.ok
+          ? { type: 'ok', msg: 'Registrado para verificación en línea.' }
+          : { type: 'err', msg: 'No se pudo registrar: ' + reg.reason };
+      }
+    }
+
     var resultsList = document.getElementById('resultsList');
     resultsList.innerHTML = '';
     for (var j = 0; j < results.length; j++) {
+      var rs = results[j].regStatus;
+      var regHtml = rs
+        ? '<div class="r-reg ' + rs.type + '">' +
+            (rs.type === 'ok' ? '●' : rs.type === 'err' ? '✕' : '⚠') + ' ' + escHtml(rs.msg) +
+          '</div>'
+        : '';
       var item = document.createElement('div');
       item.className = 'result-item';
       item.innerHTML =
         '<div class="r-info">' +
           '<div class="r-name">' + escHtml(results[j].downloadName) + '</div>' +
           '<div class="r-size">Tamaño: ' + results[j].sizeMB + ' MB</div>' +
+          regHtml +
         '</div>' +
         '<a class="btn" href="' + results[j].url + '" download="' + escHtml(results[j].downloadName) + '">Descargar</a>';
       resultsList.appendChild(item);
@@ -1354,6 +1592,16 @@ function bindEvents() {
 syncToForm();
 bindEvents();
 renderUI();
+
+// Sesión de verificación
+renderAuthBar();
+refreshAuth();
+if (supa && supa.auth && supa.auth.onAuthStateChange) {
+  supa.auth.onAuthStateChange(function (_event, session) {
+    authState.user = session ? session.user : null;
+    renderAuthBar();
+  });
+}
 </script>
 </body>
 </html>
