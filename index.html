@@ -276,6 +276,35 @@
     .btn-mini.ghost { background: transparent; color: #005600; text-decoration: underline; padding: 6px 4px; }
     .auth-note { font-size: 0.72rem; color: #c0392b; }
 
+    /* Panel de gestión de folios */
+    .mgmt {
+      padding: 14px 32px; background: #f7faf7;
+      border-bottom: 1px solid #e0eae2;
+    }
+    .mgmt-search { display: flex; gap: 8px; }
+    .mgmt-search input {
+      flex: 1; padding: 8px 11px; border: 1px solid #cdd8cf; border-radius: 8px;
+      font-family: inherit; font-size: 0.85rem;
+    }
+    .mgmt-result { margin-top: 10px; font-size: 0.82rem; }
+    .mgmt-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 10px; background: #fff; border: 1px solid #e6eee8;
+      border-radius: 8px; margin-bottom: 6px; flex-wrap: wrap;
+    }
+    .mgmt-badge {
+      font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+    .mgmt-badge.activo { background: #e4f7ea; color: #00812f; }
+    .mgmt-badge.reemplazado { background: #fff3e0; color: #b8860b; }
+    .mgmt-badge.anulado { background: #fdeaea; color: #c0392b; }
+    .mgmt-meta { color: #6a7a6d; font-size: 0.76rem; }
+    .btn-danger { background: #c0392b; }
+    .btn-warn { background: #b8860b; }
+    .mgmt-actions { display: flex; gap: 6px; }
+    .mgmt-note { color: #6a7a6d; font-size: 0.78rem; padding: 4px 2px; }
+
     /* Estado de registro en resultados */
     .r-reg { font-size: 0.74rem; margin-top: 3px; display: flex; align-items: center; gap: 5px; }
     .r-reg.ok { color: #00812f; }
@@ -315,6 +344,15 @@
       <input type="password" id="authPass" placeholder="contraseña" autocomplete="current-password" />
       <button class="btn-mini" id="btnAuthLogin" type="button">Iniciar sesión</button>
     </div>
+  </div>
+
+  <!-- PANEL DE GESTIÓN DE FOLIOS (solo con sesión) -->
+  <div class="mgmt hidden" id="mgmtPanel">
+    <div class="mgmt-search">
+      <input type="text" id="mgmtFolio" placeholder="Folio a gestionar (ej. EA2601-036-0012)" autocomplete="off" />
+      <button class="btn-mini" id="btnMgmtSearch" type="button">Buscar</button>
+    </div>
+    <div id="mgmtResult" class="mgmt-result"></div>
   </div>
 
   <!-- STEPPER -->
@@ -646,11 +684,17 @@ function renderAuthBar() {
     actions.innerHTML = '';
     return;
   }
+  var mgmt = document.getElementById('mgmtPanel');
   if (authState.user) {
     dot.classList.add('on');
     info.textContent = 'Sesión activa: ' + authState.user.email + ' · los informes finales se registrarán para verificación.';
-    actions.innerHTML = '<button class="btn-mini ghost" id="btnAuthLogout" type="button">Cerrar sesión</button>';
+    actions.innerHTML =
+      '<button class="btn-mini ghost" id="btnMgmtToggle" type="button">Gestionar folios</button>' +
+      '<button class="btn-mini ghost" id="btnAuthLogout" type="button">Cerrar sesión</button>';
     document.getElementById('btnAuthLogout').addEventListener('click', doLogout);
+    document.getElementById('btnMgmtToggle').addEventListener('click', function () {
+      if (mgmt) mgmt.classList.toggle('hidden');
+    });
   } else {
     dot.classList.remove('on');
     info.textContent = 'Inicia sesión para registrar folios verificables (solo tú).';
@@ -659,7 +703,53 @@ function renderAuthBar() {
       '<input type="password" id="authPass" placeholder="contraseña" autocomplete="current-password" />' +
       '<button class="btn-mini" id="btnAuthLogin" type="button">Iniciar sesión</button>';
     document.getElementById('btnAuthLogin').addEventListener('click', doLogin);
+    if (mgmt) mgmt.classList.add('hidden');
   }
+}
+
+// ---- Panel de gestión de folios ----
+function fmtFecha(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch (e) { return d; }
+}
+async function renderMgmt(folio) {
+  var box = document.getElementById('mgmtResult');
+  folio = (folio || '').trim();
+  if (!folio) { box.innerHTML = '<div class="mgmt-note">Escribe un folio y pulsa Buscar.</div>'; return; }
+  box.innerHTML = '<div class="mgmt-note">Buscando…</div>';
+  var r = await listarFolio(folio);
+  if (!r.ok) { box.innerHTML = '<div class="mgmt-note">Error: ' + escHtml(r.reason) + '</div>'; return; }
+  if (!r.rows.length) { box.innerHTML = '<div class="mgmt-note">Sin registros para "' + escHtml(folio) + '".</div>'; return; }
+
+  var activas = r.rows.filter(function (x) { return x.estado === 'activo'; }).length;
+  var html = '';
+  r.rows.forEach(function (x) {
+    var st = x.estado || 'activo';
+    html += '<div class="mgmt-row">' +
+      '<div><span class="mgmt-badge ' + st + '">' + st + '</span> ' +
+      '<span class="mgmt-meta">' + fmtFecha(x.fecha_emision || x.created_at) + ' · ' + (x.num_paginas != null ? x.num_paginas + ' pág.' : '') + '</span></div>' +
+      '<div class="mgmt-meta" style="font-family:monospace">…' + escHtml((x.sha256 || '').slice(-10)) + '</div>' +
+      '</div>';
+  });
+  html += '<div class="mgmt-row" style="background:#f7faf7">' +
+    '<div class="mgmt-meta">' + activas + ' activa(s) de ' + r.rows.length + ' registro(s)</div>' +
+    '<div class="mgmt-actions">' +
+      '<button class="btn-mini btn-warn" id="btnAnular" type="button">Anular folio</button>' +
+      '<button class="btn-mini btn-danger" id="btnEliminar" type="button">Eliminar definitivamente</button>' +
+    '</div></div>';
+  box.innerHTML = html;
+
+  document.getElementById('btnAnular').addEventListener('click', async function () {
+    if (!confirm('¿Anular el folio "' + folio + '"? Dejará de validar y la verificación indicará que fue anulado. Puedes registrarlo de nuevo después.')) return;
+    var res = await anularFolio(folio);
+    if (res.ok) renderMgmt(folio); else alert('No se pudo anular: ' + res.reason);
+  });
+  document.getElementById('btnEliminar').addEventListener('click', async function () {
+    if (!confirm('¿ELIMINAR definitivamente todos los registros del folio "' + folio + '"? Esto no se puede deshacer y se pierde el historial.')) return;
+    var res = await eliminarFolio(folio);
+    if (res.ok) renderMgmt(folio); else alert('No se pudo eliminar: ' + res.reason);
+  });
 }
 
 async function doLogin() {
@@ -687,17 +777,56 @@ async function doLogout() {
 }
 
 // Registra un informe final para verificación pública por folio.
-// Devuelve { ok:true } o { ok:false, reason:'...' }.
+// Si ya existía una versión ACTIVA del mismo folio, la marca como
+// "reemplazado" (correcciones) antes de insertar la nueva.
+// Devuelve { ok:true, replaced:n } o { ok:false, reason:'...' }.
 async function registerInforme(row) {
   if (!supa) return { ok: false, reason: 'no-config' };
   if (!authState.user) return { ok: false, reason: 'no-session' };
   try {
+    var replaced = 0;
+    if (row.folio) {
+      var upd = await supa.from('informes')
+        .update({ estado: 'reemplazado' })
+        .eq('folio', row.folio).eq('estado', 'activo')
+        .select('id');
+      if (!upd.error && upd.data) replaced = upd.data.length;
+    }
     var res = await supa.from('informes').insert(row);
     if (res.error) return { ok: false, reason: res.error.message };
-    return { ok: true };
+    return { ok: true, replaced: replaced };
   } catch (e) {
     return { ok: false, reason: (e && e.message) || 'error' };
   }
+}
+
+// Gestión de folios (requiere sesión).
+async function anularFolio(folio) {
+  if (!supa || !authState.user) return { ok: false, reason: 'no-session' };
+  try {
+    var res = await supa.from('informes').update({ estado: 'anulado' })
+      .eq('folio', folio).neq('estado', 'anulado').select('id');
+    if (res.error) return { ok: false, reason: res.error.message };
+    return { ok: true, count: (res.data || []).length };
+  } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
+}
+async function eliminarFolio(folio) {
+  if (!supa || !authState.user) return { ok: false, reason: 'no-session' };
+  try {
+    var res = await supa.from('informes').delete().eq('folio', folio).select('id');
+    if (res.error) return { ok: false, reason: res.error.message };
+    return { ok: true, count: (res.data || []).length };
+  } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
+}
+async function listarFolio(folio) {
+  if (!supa) return { ok: false, reason: 'no-config' };
+  try {
+    var res = await supa.from('informes')
+      .select('folio,sha256,num_paginas,fecha_emision,estado,created_at')
+      .eq('folio', folio).order('created_at', { ascending: false });
+    if (res.error) return { ok: false, reason: res.error.message };
+    return { ok: true, rows: res.data || [] };
+  } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
 }
 
 // =========================================================================
@@ -1462,7 +1591,9 @@ async function processFiles() {
           num_paginas: res.numPaginas, estado: 'activo'
         });
         res.regStatus = reg.ok
-          ? { type: 'ok', msg: 'Registrado para verificación en línea.' }
+          ? { type: 'ok', msg: reg.replaced
+              ? 'Registrado — reemplaza ' + reg.replaced + ' versión(es) anterior(es) de este folio.'
+              : 'Registrado para verificación en línea.' }
           : { type: 'err', msg: 'No se pudo registrar: ' + reg.reason };
       }
     }
@@ -1596,6 +1727,11 @@ renderUI();
 // Sesión de verificación
 renderAuthBar();
 refreshAuth();
+(function () {
+  var b = document.getElementById('btnMgmtSearch'), f = document.getElementById('mgmtFolio');
+  if (b) b.addEventListener('click', function () { renderMgmt(f.value); });
+  if (f) f.addEventListener('keydown', function (e) { if (e.key === 'Enter') renderMgmt(f.value); });
+})();
 if (supa && supa.auth && supa.auth.onAuthStateChange) {
   supa.auth.onAuthStateChange(function (_event, session) {
     authState.user = session ? session.user : null;
