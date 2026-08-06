@@ -146,7 +146,6 @@
     var resultEl = document.getElementById('result');
     var fileResultEl = document.getElementById('fileResult');
     var folioInput = document.getElementById('folioInput');
-    var knownHashes = [];   // huellas registradas del folio consultado
 
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[m]; }); }
 
@@ -163,7 +162,6 @@
     }
 
     function showAuthentic(rows) {
-      knownHashes = rows.map(function (r) { return (r.sha256 || '').toLowerCase(); });
       var r = rows[0];
       var extra = rows.length > 1 ? '<div class="detail-row"><span class="k">Archivos registrados</span><span class="v">' + rows.length + '</span></div>' : '';
       resultEl.innerHTML =
@@ -180,8 +178,23 @@
         '<p class="hint" style="margin-top:14px">Para máxima certeza, arrastra abajo el PDF que recibiste y confirmaremos que no fue alterado.</p>';
     }
 
+    function showSuperseded(folio) {
+      resultEl.innerHTML =
+        '<div class="status bad"><div class="icon">!</div>' +
+        '<div><h3>Versión no vigente</h3>' +
+        '<p>El folio <b>' + esc(folio) + '</b> existe, pero fue <b>reemplazado por una versión corregida</b>. ' +
+        'Solicita al emisor el documento vigente. Tel. 222 941 7295.</p></div></div>';
+    }
+
+    function showAnulado(folio) {
+      resultEl.innerHTML =
+        '<div class="status bad"><div class="icon">!</div>' +
+        '<div><h3>Folio anulado</h3>' +
+        '<p>El folio <b>' + esc(folio) + '</b> fue <b>anulado</b> por Ejecutiva Ambiental y ya no es válido. ' +
+        'Si recibiste este documento, comunícate al 222 941 7295.</p></div></div>';
+    }
+
     function showNotFound(folio) {
-      knownHashes = [];
       resultEl.innerHTML =
         '<div class="status bad"><div class="icon">!</div>' +
         '<div><h3>No verificable</h3>' +
@@ -205,10 +218,14 @@
       try {
         var res = await supa.from('informes')
           .select('folio,sha256,num_paginas,fecha_emision,estado,created_at')
-          .eq('folio', folio).eq('estado', 'activo')
+          .eq('folio', folio)
           .order('created_at', { ascending: false });
         if (res.error) throw res.error;
-        if (res.data && res.data.length) showAuthentic(res.data);
+        var rows = res.data || [];
+        var activas = rows.filter(function (x) { return x.estado === 'activo'; });
+        if (activas.length) showAuthentic(activas);
+        else if (rows.some(function (x) { return x.estado === 'anulado'; })) showAnulado(folio);
+        else if (rows.length) showSuperseded(folio);
         else showNotFound(folio);
       } catch (e) { showError(e.message || 'Error de conexión.'); }
     }
@@ -228,27 +245,25 @@
       try {
         var buf = await file.arrayBuffer();
         var hash = await sha256Hex(buf);
-
-        // 1) Si ya consultamos un folio, comparamos contra sus huellas.
-        if (knownHashes.length) {
-          var match = knownHashes.indexOf(hash) !== -1;
-          fileResultEl.innerHTML = match
-            ? '<div class="status ok" style="margin-top:14px"><div class="icon">✓</div><div><h3>Archivo íntegro</h3><p>La huella coincide con el documento registrado. No fue alterado.</p></div></div>'
-            : '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>La huella NO coincide</h3><p>Este archivo no es idéntico al registrado para el folio. Puede haber sido modificado o re-guardado. Verifica con el emisor.</p><p class="mono" style="margin-top:8px">Huella del archivo: ' + hash + '</p></div></div>';
-          return;
-        }
-
-        // 2) Sin folio previo: buscamos por huella.
         if (!supa) { showError('Servicio no disponible.'); return; }
+
+        // Buscamos el archivo por su huella (cualquier estado).
         var res = await supa.from('informes')
           .select('folio,sha256,num_paginas,fecha_emision,estado,created_at')
-          .eq('sha256', hash).eq('estado', 'activo').limit(1);
+          .eq('sha256', hash)
+          .order('created_at', { ascending: false }).limit(1);
         if (res.error) throw res.error;
+
         if (res.data && res.data.length) {
           var r = res.data[0];
           folioInput.value = r.folio;
-          fileResultEl.innerHTML = '<div class="status ok" style="margin-top:14px"><div class="icon">✓</div><div><h3>Archivo auténtico e íntegro</h3><p>Coincide exactamente con el folio <b>' + esc(r.folio) + '</b> registrado por Ejecutiva Ambiental.</p></div></div>';
-          knownHashes = [hash];
+          if (r.estado === 'activo') {
+            fileResultEl.innerHTML = '<div class="status ok" style="margin-top:14px"><div class="icon">✓</div><div><h3>Archivo auténtico e íntegro</h3><p>Coincide exactamente con el folio <b>' + esc(r.folio) + '</b> registrado por Ejecutiva Ambiental. No fue alterado.</p></div></div>';
+          } else if (r.estado === 'anulado') {
+            fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Documento anulado</h3><p>Este archivo corresponde al folio <b>' + esc(r.folio) + '</b>, que fue <b>anulado</b> y ya no es válido.</p></div></div>';
+          } else {
+            fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Versión anterior (corregida)</h3><p>Este archivo pertenece al folio <b>' + esc(r.folio) + '</b> pero es una <b>versión que fue reemplazada</b>. Solicita el documento vigente al emisor.</p></div></div>';
+          }
           searchByFolio(r.folio);
         } else {
           fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Archivo no registrado</h3><p>No encontramos ningún informe con esta huella. El documento no consta como emitido por Ejecutiva Ambiental (o fue modificado tras su emisión).</p><p class="mono" style="margin-top:8px">Huella: ' + hash + '</p></div></div>';
