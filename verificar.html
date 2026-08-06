@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificación de Autenticidad — Ejecutiva Ambiental</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(160deg, #f3f7f3 0%, #dce9df 100%);
+      min-height: 100vh; padding: 24px 16px; color: #1b2b1f;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; }
+
+    /* Encabezado de marca */
+    .brand { text-align: center; margin-bottom: 22px; }
+    .seal {
+      width: 66px; height: 66px; border-radius: 50%;
+      border: 2.5px solid #005600; display: inline-flex;
+      align-items: center; justify-content: center; margin-bottom: 10px;
+      box-shadow: inset 0 0 0 4px #fff, inset 0 0 0 5px #b48e2e;
+      background: #fff; color: #005600; font-weight: 700; font-size: 1.5rem;
+    }
+    .brand h1 { font-size: 1.15rem; letter-spacing: .04em; color: #003800; }
+    .brand .sub { font-size: .72rem; letter-spacing: .3em; color: #6a7a6d; margin-top: 3px; text-transform: uppercase; }
+
+    .card {
+      background: #fff; border-radius: 18px; overflow: hidden;
+      box-shadow: 0 18px 50px rgba(0,60,20,.10); border: 1px solid #e2ece4;
+    }
+    .card-head { padding: 18px 26px; border-bottom: 1px solid #eef3ef; }
+    .card-head h2 { font-size: 1rem; color: #003800; }
+    .card-body { padding: 24px 26px; }
+
+    /* Buscador por folio */
+    .search { display: flex; gap: 8px; }
+    .search input {
+      flex: 1; padding: 12px 14px; border: 1.5px solid #cdd8cf; border-radius: 10px;
+      font-family: inherit; font-size: .95rem;
+    }
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer;
+      background: #005600; color: #fff; font-weight: 600; font-family: inherit; font-size: .9rem;
+      transition: background .2s;
+    }
+    .btn:hover { background: #00762f; }
+    .btn:disabled { opacity: .6; cursor: default; }
+
+    /* Estado / resultado */
+    .result { margin-top: 22px; }
+    .status {
+      border-radius: 14px; padding: 20px 22px; display: flex; gap: 14px; align-items: flex-start;
+    }
+    .status .icon {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #fff;
+    }
+    .status.ok    { background: #edf9f0; border: 1px solid #b7e4c4; }
+    .status.ok .icon { background: #00a043; }
+    .status.bad   { background: #fdeeee; border: 1px solid #f0c4c4; }
+    .status.bad .icon { background: #c0392b; }
+    .status.wait  { background: #f4f7fb; border: 1px solid #d8e2ef; }
+    .status.wait .icon { background: #8a97a8; }
+    .status h3 { font-size: 1.02rem; margin-bottom: 3px; }
+    .status.ok h3 { color: #00812f; }
+    .status.bad h3 { color: #b12a1c; }
+    .status p { font-size: .85rem; color: #55655a; line-height: 1.5; }
+
+    .details { margin-top: 18px; border-top: 1px dashed #dbe6dd; padding-top: 16px; }
+    .detail-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: .9rem; border-bottom: 1px solid #f1f5f2; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .k { color: #6a7a6d; }
+    .detail-row .v { font-weight: 600; color: #1b2b1f; text-align: right; }
+
+    /* Verificación de archivo */
+    .filecheck { margin-top: 22px; }
+    .filecheck .label { font-size: .82rem; color: #6a7a6d; margin-bottom: 8px; font-weight: 600; letter-spacing: .02em; }
+    .drop {
+      border: 2px dashed #bcd0c0; border-radius: 12px; padding: 22px; text-align: center;
+      background: #fafdfb; cursor: pointer; transition: all .2s; font-size: .88rem; color: #55655a;
+    }
+    .drop:hover, .drop.over { border-color: #00a043; background: #f0faf3; }
+    .drop b { color: #005600; }
+    .hint { font-size: .75rem; color: #90a094; margin-top: 6px; }
+
+    .foot { text-align: center; font-size: .72rem; color: #7d8c80; margin-top: 22px; line-height: 1.7; }
+    .foot a { color: #005600; text-decoration: none; }
+    .spinner {
+      width: 22px; height: 22px; border: 3px solid #cfe6d6; border-top-color: #00a043;
+      border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <div class="seal">EA</div>
+      <h1>EJECUTIVA AMBIENTAL</h1>
+      <div class="sub">Verificación de Autenticidad</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Verifica un informe</h2>
+      </div>
+      <div class="card-body">
+        <div class="search">
+          <input type="text" id="folioInput" placeholder="Número de folio (ej. EA2601-036-0012)" autocomplete="off" />
+          <button class="btn" id="btnSearch" type="button">Verificar</button>
+        </div>
+
+        <div class="result" id="result"></div>
+
+        <div class="filecheck">
+          <div class="label">Verificación del archivo (opcional)</div>
+          <div class="drop" id="drop">
+            Arrastra aquí el <b>PDF</b> que recibiste o <b>haz clic para elegirlo</b>.
+            <input type="file" id="fileInput" accept="application/pdf" style="display:none" />
+            <div class="hint">El archivo NO se sube a ningún servidor: la huella se calcula en tu propio dispositivo.</div>
+          </div>
+          <div id="fileResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      Solución en Ingeniería Ejecutiva Ambiental, S.A. de C.V.<br>
+      Tel. 222 941 7295 · <a href="https://www.ejecutivambiental.com">www.ejecutivambiental.com</a>
+    </div>
+  </div>
+
+  <script>
+    // ===== Configuración (debe coincidir con la herramienta) =====
+    var SUPABASE_URL = 'https://zwllvbmiyzblahtxizbk.supabase.co';
+    var SUPABASE_KEY = 'sb_publishable_eMm-wi8-v4zx0LEa3rzlSw_KAnWXca8';
+
+    var supa = null;
+    try { supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
+    catch (e) { console.error('Supabase no disponible', e); }
+
+    var resultEl = document.getElementById('result');
+    var fileResultEl = document.getElementById('fileResult');
+    var folioInput = document.getElementById('folioInput');
+    var knownHashes = [];   // huellas registradas del folio consultado
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[m]; }); }
+
+    function fmtDate(d) {
+      if (!d) return '—';
+      try { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }); }
+      catch (e) { return d; }
+    }
+
+    function showWait(msg) {
+      resultEl.innerHTML =
+        '<div class="status wait"><div class="icon"><span class="spinner"></span></div>' +
+        '<div><h3>Consultando…</h3><p>' + esc(msg || '') + '</p></div></div>';
+    }
+
+    function showAuthentic(rows) {
+      knownHashes = rows.map(function (r) { return (r.sha256 || '').toLowerCase(); });
+      var r = rows[0];
+      var extra = rows.length > 1 ? '<div class="detail-row"><span class="k">Archivos registrados</span><span class="v">' + rows.length + '</span></div>' : '';
+      resultEl.innerHTML =
+        '<div class="status ok"><div class="icon">✓</div>' +
+        '<div><h3>Documento auténtico</h3>' +
+        '<p>Este folio fue emitido y registrado por Ejecutiva Ambiental.</p></div></div>' +
+        '<div class="details">' +
+          '<div class="detail-row"><span class="k">Folio</span><span class="v">' + esc(r.folio) + '</span></div>' +
+          '<div class="detail-row"><span class="k">Fecha de emisión</span><span class="v">' + esc(fmtDate(r.fecha_emision || r.created_at)) + '</span></div>' +
+          '<div class="detail-row"><span class="k">Total de páginas</span><span class="v">' + esc(r.num_paginas != null ? r.num_paginas : '—') + '</span></div>' +
+          '<div class="detail-row"><span class="k">Estado</span><span class="v">Activo</span></div>' +
+          extra +
+        '</div>' +
+        '<p class="hint" style="margin-top:14px">Para máxima certeza, arrastra abajo el PDF que recibiste y confirmaremos que no fue alterado.</p>';
+    }
+
+    function showNotFound(folio) {
+      knownHashes = [];
+      resultEl.innerHTML =
+        '<div class="status bad"><div class="icon">!</div>' +
+        '<div><h3>No verificable</h3>' +
+        '<p>No encontramos el folio <b>' + esc(folio) + '</b> en el registro de Ejecutiva Ambiental. ' +
+        'Puede tratarse de un error de captura, un documento no oficial, o una alteración. ' +
+        'Si tienes dudas, comunícate al 222 941 7295.</p></div></div>' +
+        '<p class="hint" style="margin-top:14px">También puedes arrastrar el PDF abajo para buscarlo por su huella digital.</p>';
+    }
+
+    function showError(msg) {
+      resultEl.innerHTML =
+        '<div class="status bad"><div class="icon">!</div>' +
+        '<div><h3>No se pudo consultar</h3><p>' + esc(msg) + '</p></div></div>';
+    }
+
+    async function searchByFolio(folio) {
+      folio = (folio || '').trim();
+      if (!folio) { resultEl.innerHTML = ''; return; }
+      if (!supa) { showError('Servicio de verificación no disponible.'); return; }
+      showWait('Buscando el folio ' + folio + '…');
+      try {
+        var res = await supa.from('informes')
+          .select('folio,sha256,num_paginas,fecha_emision,estado,created_at')
+          .eq('folio', folio).eq('estado', 'activo')
+          .order('created_at', { ascending: false });
+        if (res.error) throw res.error;
+        if (res.data && res.data.length) showAuthentic(res.data);
+        else showNotFound(folio);
+      } catch (e) { showError(e.message || 'Error de conexión.'); }
+    }
+
+    async function sha256Hex(arrayBuffer) {
+      var digest = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      return Array.from(new Uint8Array(digest)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+
+    async function handleFile(file) {
+      if (!file) return;
+      if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+        fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Archivo no válido</h3><p>Debe ser un PDF.</p></div></div>';
+        return;
+      }
+      fileResultEl.innerHTML = '<div class="status wait" style="margin-top:14px"><div class="icon"><span class="spinner"></span></div><div><h3>Calculando huella…</h3><p>' + esc(file.name) + '</p></div></div>';
+      try {
+        var buf = await file.arrayBuffer();
+        var hash = await sha256Hex(buf);
+
+        // 1) Si ya consultamos un folio, comparamos contra sus huellas.
+        if (knownHashes.length) {
+          var match = knownHashes.indexOf(hash) !== -1;
+          fileResultEl.innerHTML = match
+            ? '<div class="status ok" style="margin-top:14px"><div class="icon">✓</div><div><h3>Archivo íntegro</h3><p>La huella coincide con el documento registrado. No fue alterado.</p></div></div>'
+            : '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>La huella NO coincide</h3><p>Este archivo no es idéntico al registrado para el folio. Puede haber sido modificado o re-guardado. Verifica con el emisor.</p><p class="mono" style="margin-top:8px">Huella del archivo: ' + hash + '</p></div></div>';
+          return;
+        }
+
+        // 2) Sin folio previo: buscamos por huella.
+        if (!supa) { showError('Servicio no disponible.'); return; }
+        var res = await supa.from('informes')
+          .select('folio,sha256,num_paginas,fecha_emision,estado,created_at')
+          .eq('sha256', hash).eq('estado', 'activo').limit(1);
+        if (res.error) throw res.error;
+        if (res.data && res.data.length) {
+          var r = res.data[0];
+          folioInput.value = r.folio;
+          fileResultEl.innerHTML = '<div class="status ok" style="margin-top:14px"><div class="icon">✓</div><div><h3>Archivo auténtico e íntegro</h3><p>Coincide exactamente con el folio <b>' + esc(r.folio) + '</b> registrado por Ejecutiva Ambiental.</p></div></div>';
+          knownHashes = [hash];
+          searchByFolio(r.folio);
+        } else {
+          fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Archivo no registrado</h3><p>No encontramos ningún informe con esta huella. El documento no consta como emitido por Ejecutiva Ambiental (o fue modificado tras su emisión).</p><p class="mono" style="margin-top:8px">Huella: ' + hash + '</p></div></div>';
+        }
+      } catch (e) {
+        fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Error</h3><p>' + esc(e.message || 'No se pudo leer el archivo.') + '</p></div></div>';
+      }
+    }
+
+    // ===== Eventos =====
+    document.getElementById('btnSearch').addEventListener('click', function () { searchByFolio(folioInput.value); });
+    folioInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') searchByFolio(folioInput.value); });
+
+    var drop = document.getElementById('drop');
+    var fileInput = document.getElementById('fileInput');
+    drop.addEventListener('click', function () { fileInput.click(); });
+    fileInput.addEventListener('change', function (e) { if (e.target.files[0]) handleFile(e.target.files[0]); });
+    drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
+    drop.addEventListener('drop', function (e) {
+      e.preventDefault(); drop.classList.remove('over');
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    // ===== Autoconsulta desde ?folio= =====
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var folio = params.get('folio');
+      if (folio) { folioInput.value = folio; searchByFolio(folio); }
+    })();
+  </script>
+</body>
+</html>
