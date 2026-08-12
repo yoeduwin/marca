@@ -94,6 +94,40 @@
     }
     .mode-card ul li::before { content: '✓ '; color: #005600; font-weight: 700; }
 
+    /* Separador "o simplemente" antes del modo aplanar */
+    .mode-sep {
+      display: flex; align-items: center; text-align: center;
+      color: #9aa79c; font-size: 0.76rem; font-weight: 600;
+      margin: 2px 0 14px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .mode-sep::before, .mode-sep::after { content: ''; flex: 1; height: 1px; background: #e0eae2; }
+    .mode-sep span { padding: 0 12px; }
+
+    /* Modo exclusivo: aplanar / escaneado (carril rápido, sin configuración) */
+    .flatten-card {
+      display: flex; align-items: center; gap: 16px; width: 100%;
+      padding: 18px 20px; border: 2px solid #ddd; border-radius: 16px;
+      background: #fafafa; cursor: pointer; transition: all 0.22s;
+      text-align: left; margin-bottom: 26px; font-family: inherit;
+    }
+    .flatten-card:hover { border-color: #7fb59a; background: #f2faf3; }
+    .flatten-card.active { border-color: #005600; background: #e8f5e9; box-shadow: 0 4px 16px rgba(0,86,0,0.14); }
+    .flatten-card .mode-icon { font-size: 2rem; margin: 0; flex-shrink: 0; }
+    .flatten-card-body { flex: 1; min-width: 0; }
+    .flatten-card-body h4 { color: #333; margin-bottom: 4px; font-size: 0.97rem; }
+    .flatten-card.active .flatten-card-body h4 { color: #005600; }
+    .flatten-card-body p { font-size: 0.8rem; color: #666; margin: 0; line-height: 1.45; }
+    .flatten-card-cta { flex-shrink: 0; font-weight: 700; color: #005600; font-size: 0.85rem; white-space: nowrap; }
+
+    /* Panel del modo aplanar en el paso de archivos */
+    .aplanar-panel {
+      background: #f6fbf8; border: 1px solid #dbe9df; border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 16px;
+    }
+    .aplanar-info { font-size: 0.82rem; color: #3a5a44; margin-bottom: 12px; line-height: 1.5; }
+    .aplanar-info b { color: #005600; }
+    .aplanar-panel .field-row { margin-bottom: 0; }
+
     /* ===================== STEP 2: CONFIG ===================== */
     .config-section { margin-bottom: 18px; }
     .section-head {
@@ -321,6 +355,8 @@
       .step-label { display: none; }
       .step-panel { padding: 20px 18px; }
       .grid-2 { grid-template-columns: 1fr; }
+      .flatten-card { flex-wrap: wrap; gap: 10px; }
+      .flatten-card-cta { width: 100%; }
     }
   </style>
 </head>
@@ -355,28 +391,8 @@
     <div id="mgmtResult" class="mgmt-result"></div>
   </div>
 
-  <!-- STEPPER -->
-  <div class="stepper">
-    <div class="step-item active" id="stepItem1">
-      <div class="step-circle">1</div>
-      <div class="step-label">Modo</div>
-    </div>
-    <div class="step-connector" id="conn1"></div>
-    <div class="step-item" id="stepItem2">
-      <div class="step-circle">2</div>
-      <div class="step-label">Config.</div>
-    </div>
-    <div class="step-connector" id="conn2"></div>
-    <div class="step-item" id="stepItem3">
-      <div class="step-circle">3</div>
-      <div class="step-label">Archivos</div>
-    </div>
-    <div class="step-connector" id="conn3"></div>
-    <div class="step-item" id="stepItem4">
-      <div class="step-circle">4</div>
-      <div class="step-label">Resultado</div>
-    </div>
-  </div>
+  <!-- STEPPER (se genera dinámicamente según el modo) -->
+  <div class="stepper" id="stepper"></div>
 
   <!-- ===== STEP 1: MODO ===== -->
   <section id="step1" class="step-panel">
@@ -406,6 +422,18 @@
           <li>Sin página de certificación</li>
         </ul>
       </div>
+    </div>
+
+    <div class="mode-sep"><span>o simplemente</span></div>
+
+    <!-- MODO EXCLUSIVO: SOLO APLANAR (carril rápido, sin configuración) -->
+    <div class="flatten-card" id="cardAplanar">
+      <span class="mode-icon">🖨️</span>
+      <div class="flatten-card-body">
+        <h4>Solo aplanar (como escaneado)</h4>
+        <p>Convierte el PDF en imágenes, como si lo hubieras escaneado. Sin marca de agua, sin numeración, sin nada que configurar.</p>
+      </div>
+      <span class="flatten-card-cta">Aplanar ahora →</span>
     </div>
 
     <div class="step-nav end">
@@ -572,8 +600,24 @@
 
   <!-- ===== STEP 3: ARCHIVOS ===== -->
   <section id="step3" class="step-panel hidden">
-    <p class="step-title">Selecciona los archivos PDF</p>
-    <p class="step-subtitle">Puedes procesar múltiples PDFs a la vez con la misma configuración.</p>
+    <p class="step-title" id="step3Title">Selecciona los archivos PDF</p>
+    <p class="step-subtitle" id="step3Subtitle">Puedes procesar múltiples PDFs a la vez con la misma configuración.</p>
+
+    <!-- Panel exclusivo del modo aplanar -->
+    <div id="aplanarPanel" class="aplanar-panel hidden">
+      <div class="aplanar-info">
+        🖨️ <b>Modo aplanado</b> — cada PDF se convierte en imágenes, como si lo hubieras escaneado.
+        No se puede editar, ni copiar el texto. Sin marca de agua ni numeración.
+      </div>
+      <div class="field-row">
+        <label for="aplanarQuality">Calidad (opcional)</label>
+        <select id="aplanarQuality">
+          <option value="media">Ligera — archivos más pequeños (144 DPI)</option>
+          <option value="alta" selected>Estándar — recomendada (180 DPI)</option>
+          <option value="maxima">Máxima nitidez — archivos más pesados (216 DPI)</option>
+        </select>
+      </div>
+    </div>
 
     <div id="validationMsg" class="validation-msg hidden"></div>
 
@@ -834,7 +878,9 @@ async function listarFolio(folio) {
 // =========================================================================
 var state = {
   step: 1,
-  mode: 'final',
+  mode: 'final', // 'final' | 'preliminar' | 'aplanar'
+  // Modo aplanar (solo escaneado, sin configuración)
+  aplanarQuality: 'alta',
   // Basic config
   reportNumber: '',
   includeCertificate: true,
@@ -868,22 +914,40 @@ function setVisible(id, show) {
   if (el) el.classList.toggle('hidden', !show);
 }
 
+// Secuencia de pasos según el modo. 'n' es el id interno del paso
+// (1=Modo, 2=Config, 3=Archivos, 4=Resultado). El modo aplanar omite Config.
+var STEP_FLOWS = {
+  protection: [
+    { n: 1, label: 'Modo' }, { n: 2, label: 'Config.' },
+    { n: 3, label: 'Archivos' }, { n: 4, label: 'Resultado' }
+  ],
+  aplanar: [
+    { n: 1, label: 'Modo' }, { n: 3, label: 'Archivos' }, { n: 4, label: 'Resultado' }
+  ]
+};
+function currentFlow() {
+  return state.mode === 'aplanar' ? STEP_FLOWS.aplanar : STEP_FLOWS.protection;
+}
+
 function renderStepper() {
-  [1, 2, 3, 4].forEach(function(n) {
-    var el = document.getElementById('stepItem' + n);
-    var circle = el.querySelector('.step-circle');
-    el.classList.remove('active', 'completed');
-    if (n < state.step) {
-      el.classList.add('completed');
-      circle.textContent = '✓';
-    } else {
-      circle.textContent = n;
+  var flow = currentFlow();
+  var curIdx = flow.findIndex(function(s) { return s.n === state.step; });
+  if (curIdx < 0) curIdx = 0;
+  var html = '';
+  flow.forEach(function(s, idx) {
+    var cls = 'step-item';
+    var content;
+    if (idx < curIdx) { cls += ' completed'; content = '✓'; }
+    else { if (idx === curIdx) cls += ' active'; content = String(idx + 1); }
+    html += '<div class="' + cls + '">' +
+              '<div class="step-circle">' + content + '</div>' +
+              '<div class="step-label">' + s.label + '</div>' +
+            '</div>';
+    if (idx < flow.length - 1) {
+      html += '<div class="step-connector' + (idx < curIdx ? ' done' : '') + '"></div>';
     }
-    if (n === state.step) el.classList.add('active');
   });
-  [1, 2, 3].forEach(function(n) {
-    document.getElementById('conn' + n).classList.toggle('done', n < state.step);
-  });
+  document.getElementById('stepper').innerHTML = html;
 }
 
 function renderStepPanels() {
@@ -897,6 +961,8 @@ function renderStepPanels() {
 function renderModeCards() {
   document.getElementById('cardFinal').classList.toggle('active', state.mode === 'final');
   document.getElementById('cardPreliminar').classList.toggle('active', state.mode === 'preliminar');
+  var ca = document.getElementById('cardAplanar');
+  if (ca) ca.classList.toggle('active', state.mode === 'aplanar');
 }
 
 function renderConfigPanel() {
@@ -961,6 +1027,13 @@ function renderFileList() {
 }
 
 function renderStep3() {
+  var isAplanar = state.mode === 'aplanar';
+  setVisible('aplanarPanel', isAplanar);
+  var sub = document.getElementById('step3Subtitle');
+  if (sub) sub.textContent = isAplanar
+    ? 'Suelta tus PDFs y se aplanarán como si fueran escaneados. No hay nada más que configurar.'
+    : 'Puedes procesar múltiples PDFs a la vez con la misma configuración.';
+
   var errors = validateConfig();
   var hasFiles = state.selectedFiles.length > 0;
 
@@ -975,9 +1048,10 @@ function renderStep3() {
   var btn = document.getElementById('btnProcess');
   btn.disabled = errors.length > 0 || !hasFiles;
   var count = state.selectedFiles.length;
+  var verb = isAplanar ? 'Aplanar' : 'Procesar';
   btn.textContent = count > 0
-    ? 'Procesar ' + count + ' archivo' + (count === 1 ? '' : 's')
-    : 'Procesar';
+    ? verb + ' ' + count + ' archivo' + (count === 1 ? '' : 's')
+    : verb;
 
   renderFileList();
 }
@@ -1003,6 +1077,8 @@ function renderUI() {
 // =========================================================================
 function validateConfig() {
   var errors = [];
+  // El modo aplanar no requiere ninguna configuración.
+  if (state.mode === 'aplanar') return errors;
   if (!state.applyWatermark && !state.applyPagination) {
     errors.push('Selecciona al menos una salida: marca de agua o paginación.');
   }
@@ -1013,7 +1089,35 @@ function validateConfig() {
   return errors;
 }
 
+// Presets de calidad para el modo aplanar (escala pdf.js → DPI aprox.).
+var APLANAR_PRESETS = {
+  media:  { scale: 2,   quality: 0.72 },
+  alta:   { scale: 2.5, quality: 0.85 },
+  maxima: { scale: 3,   quality: 0.92 }
+};
+
 function buildOptionsFromUI() {
+  // Modo exclusivo: solo aplanar. Sin marca de agua, sin paginación,
+  // sin certificado, sin número de informe — nada que configurar.
+  if (state.mode === 'aplanar') {
+    var preset = APLANAR_PRESETS[state.aplanarQuality] || APLANAR_PRESETS.alta;
+    return {
+      mode: 'aplanar',
+      textOption: 'predefined',
+      reportNumber: '',
+      text1: '', text2: '',
+      density: state.density,
+      baseOpacity: parseFloat(state.opacity),
+      config: getDensityConfig(state.density),
+      shouldFlatten: true,
+      flatScale: preset.scale,
+      flatQuality: preset.quality,
+      enableWatermark: false,
+      enablePagination: false,
+      includeCertificate: false
+    };
+  }
+
   var currentYear = new Date().getFullYear();
   var isPreliminar = state.mode === 'preliminar';
   var text1, text2;
@@ -1100,6 +1204,8 @@ function syncToForm() {
   document.getElementById('flattenDoc').checked = state.flattenDoc;
   document.getElementById('flattenScale').value = state.flattenScale;
   document.getElementById('flattenQuality').value = state.flattenQuality;
+  var aqEl = document.getElementById('aplanarQuality');
+  if (aqEl) aqEl.value = state.aplanarQuality;
 }
 
 // =========================================================================
@@ -1430,6 +1536,10 @@ function applyMetadata(doc, mode, reportNumber) {
     doc.setTitle('Informe Final Digital ' + reportNumber);
     doc.setSubject('Informe certificado - ' + reportNumber);
     doc.setKeywords(['informe-final', 'certificado', 'ejecutiva-ambiental', reportNumber]);
+  } else if (mode === 'aplanar') {
+    doc.setTitle('Documento');
+    doc.setSubject('Documento aplanado (imagen)');
+    doc.setKeywords(['aplanado', 'escaneado', 'imagen']);
   } else {
     doc.setTitle('Documento Preliminar - NO OFICIAL' + (reportNumber ? ' ' + reportNumber : ''));
     doc.setSubject('Borrador / anexo con marca de agua de seguridad');
@@ -1454,20 +1564,25 @@ async function processSinglePDF(file, opts) {
   var bytes = await file.arrayBuffer();
   var pdfDoc = await PDFLib.PDFDocument.load(bytes);
 
-  var font, fontBold;
-  try {
-    var mont = await loadMontserratFont();
-    font = await pdfDoc.embedFont(mont, { subset: true });
-    // Negrita real: variante 700 embebida; si falla, se usa Helvetica-Bold.
+  // Solo se necesitan fuentes para marca de agua, paginación o certificado.
+  // El aplanado puro (solo escaneado) no requiere ninguna → se omite su carga.
+  var needFonts = enableWatermark || enablePagination || (mode === 'final' && includeCertificate);
+  var font = null, fontBold = null;
+  if (needFonts) {
     try {
-      var montBold = await loadMontserratBoldFont();
-      fontBold = await pdfDoc.embedFont(montBold, { subset: true });
-    } catch (_b) {
+      var mont = await loadMontserratFont();
+      font = await pdfDoc.embedFont(mont, { subset: true });
+      // Negrita real: variante 700 embebida; si falla, se usa Helvetica-Bold.
+      try {
+        var montBold = await loadMontserratBoldFont();
+        fontBold = await pdfDoc.embedFont(montBold, { subset: true });
+      } catch (_b) {
+        fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+      }
+    } catch (_) {
+      font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
       fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
     }
-  } catch (_) {
-    font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-    fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
   }
 
   var color = PDFLib.rgb(0, 86/255, 0);
@@ -1509,7 +1624,7 @@ async function processSinglePDF(file, opts) {
   }
 
   applyMetadata(pdfDoc, mode, reportNumber);
-  downloadName = mode === 'final' ? file.name : 'Preliminar - ' + file.name;
+  downloadName = mode === 'preliminar' ? 'Preliminar - ' + file.name : file.name;
 
   var finalPdfDoc = pdfDoc;
   if (shouldFlatten) {
@@ -1567,12 +1682,15 @@ async function processFiles() {
     var opts = buildOptionsFromUI();
     var results = [];
 
+    var isAplanar = state.mode === 'aplanar';
+    var verb = isAplanar ? 'Aplanando' : 'Procesando';
     for (var i = 0; i < files.length; i++) {
       var label = files.length > 1
-        ? 'Procesando ' + (i + 1) + ' de ' + files.length + ': ' + files[i].name
-        : 'Procesando: ' + files[i].name;
+        ? verb + ' ' + (i + 1) + ' de ' + files.length + ': ' + files[i].name
+        : verb + ': ' + files[i].name;
       document.getElementById('processingTitle').textContent = label;
-      document.getElementById('processingNote').textContent = 'Aplicando marca de agua...';
+      document.getElementById('processingNote').textContent =
+        isAplanar ? 'Preparando aplanado...' : 'Aplicando marca de agua...';
       results.push(await processSinglePDF(files[i], opts));
     }
 
@@ -1642,15 +1760,28 @@ function bindEvents() {
   document.getElementById('cardFinal').addEventListener('click', function() {
     state.mode = 'final';
     renderModeCards();
+    renderStepper();
   });
   document.getElementById('cardPreliminar').addEventListener('click', function() {
     state.mode = 'preliminar';
     renderModeCards();
+    renderStepper();
+  });
+  // Carril rápido: aplanar salta directo a la selección de archivos.
+  document.getElementById('cardAplanar').addEventListener('click', function() {
+    state.mode = 'aplanar';
+    renderModeCards();
+    syncToForm();
+    goToStep(3);
   });
   document.getElementById('btnStep1Next').addEventListener('click', function() {
     syncToForm();
-    goToStep(2);
+    goToStep(state.mode === 'aplanar' ? 3 : 2);
   });
+
+  // Selector de calidad del modo aplanar
+  var aqEl = document.getElementById('aplanarQuality');
+  if (aqEl) aqEl.addEventListener('change', function() { state.aplanarQuality = aqEl.value; });
 
   // Step 2: sync any change → state → re-render visibility
   document.querySelectorAll('#step2 input, #step2 select, #step2 textarea').forEach(function(el) {
@@ -1700,7 +1831,9 @@ function bindEvents() {
     renderUI();
   });
 
-  document.getElementById('btnStep3Back').addEventListener('click', function() { goToStep(2); });
+  document.getElementById('btnStep3Back').addEventListener('click', function() {
+    goToStep(state.mode === 'aplanar' ? 1 : 2);
+  });
   document.getElementById('btnProcess').addEventListener('click', processFiles);
 
   // Step 4: results navigation
