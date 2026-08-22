@@ -706,7 +706,7 @@ async function sha256Hex(bytes) {
 // =========================================================================
 // SESIÓN (para registrar folios verificables)
 // =========================================================================
-var authState = { user: null };
+var authState = { user: null, recovery: false };
 
 async function refreshAuth() {
   if (!supa) { renderAuthBar(); return; }
@@ -729,6 +729,16 @@ function renderAuthBar() {
     return;
   }
   var mgmt = document.getElementById('mgmtPanel');
+  if (authState.recovery) {
+    dot.classList.add('on');
+    info.textContent = 'Recuperación de contraseña: escribe tu nueva contraseña para el administrador de folios.';
+    actions.innerHTML =
+      '<input type="password" id="authNewPass" placeholder="nueva contraseña" autocomplete="new-password" />' +
+      '<button class="btn-mini" id="btnAuthSetPass" type="button">Guardar contraseña</button>';
+    document.getElementById('btnAuthSetPass').addEventListener('click', doSetNewPassword);
+    if (mgmt) mgmt.classList.add('hidden');
+    return;
+  }
   if (authState.user) {
     dot.classList.add('on');
     info.textContent = 'Sesión activa: ' + authState.user.email + ' · los informes finales se registrarán para verificación.';
@@ -841,6 +851,27 @@ async function doForgotPassword() {
     alert('No se pudo enviar el correo de recuperación: ' + (e.message || e));
   }
   if (btn) { btn.disabled = false; btn.textContent = '¿Olvidaste tu contraseña?'; }
+}
+
+// Establece la nueva contraseña durante la sesión de recuperación (evento PASSWORD_RECOVERY).
+async function doSetNewPassword() {
+  if (!supa) return;
+  var input = document.getElementById('authNewPass');
+  var pass = (input && input.value || '');
+  if (pass.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
+  var btn = document.getElementById('btnAuthSetPass');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try {
+    var res = await supa.auth.updateUser({ password: pass });
+    if (res.error) throw res.error;
+    authState.recovery = false;
+    authState.user = res.data.user;
+    renderAuthBar();
+    alert('Contraseña actualizada. Ya tienes sesión activa.');
+  } catch (e) {
+    alert('No se pudo actualizar la contraseña: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar contraseña'; }
+  }
 }
 
 // Registra un informe final para verificación pública por folio.
@@ -1889,7 +1920,14 @@ refreshAuth();
   if (f) f.addEventListener('keydown', function (e) { if (e.key === 'Enter') renderMgmt(f.value); });
 })();
 if (supa && supa.auth && supa.auth.onAuthStateChange) {
-  supa.auth.onAuthStateChange(function (_event, session) {
+  supa.auth.onAuthStateChange(function (event, session) {
+    if (event === 'PASSWORD_RECOVERY') {
+      authState.recovery = true;
+      authState.user = session ? session.user : null;
+      renderAuthBar();
+      return;
+    }
+    authState.recovery = false;
     authState.user = session ? session.user : null;
     renderAuthBar();
   });
