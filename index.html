@@ -745,8 +745,10 @@ function renderAuthBar() {
     actions.innerHTML =
       '<input type="email" id="authEmail" placeholder="correo" autocomplete="username" />' +
       '<input type="password" id="authPass" placeholder="contraseña" autocomplete="current-password" />' +
-      '<button class="btn-mini" id="btnAuthLogin" type="button">Iniciar sesión</button>';
+      '<button class="btn-mini" id="btnAuthLogin" type="button">Iniciar sesión</button>' +
+      '<button class="btn-mini ghost" id="btnAuthForgot" type="button">¿Olvidaste tu contraseña?</button>';
     document.getElementById('btnAuthLogin').addEventListener('click', doLogin);
+    document.getElementById('btnAuthForgot').addEventListener('click', doForgotPassword);
     if (mgmt) mgmt.classList.add('hidden');
   }
 }
@@ -818,6 +820,27 @@ async function doLogout() {
   try { await supa.auth.signOut(); } catch (e) {}
   authState.user = null;
   renderAuthBar();
+}
+
+// Envía un correo de recuperación para restablecer la contraseña del admin.
+async function doForgotPassword() {
+  if (!supa) return;
+  var emailInput = document.getElementById('authEmail');
+  var email = (emailInput && emailInput.value || '').trim();
+  if (!email) {
+    email = (prompt('Escribe el correo del administrador para enviarte el enlace de recuperación:') || '').trim();
+  }
+  if (!email) return;
+  var btn = document.getElementById('btnAuthForgot');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+  try {
+    var res = await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] });
+    if (res.error) throw res.error;
+    alert('Listo. Si "' + email + '" está registrado, te llegará un correo con el enlace para poner una nueva contraseña. Revisa también spam.');
+  } catch (e) {
+    alert('No se pudo enviar el correo de recuperación: ' + (e.message || e));
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '¿Olvidaste tu contraseña?'; }
 }
 
 // Registra un informe final para verificación pública por folio.
