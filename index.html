@@ -957,6 +957,7 @@ async function doSetNewPassword() {
     if (res.error) throw res.error;
     authState.recovery = false;
     authState.user = res.data.user;
+    await loadCurrentProfile();
     renderAuthBar();
     alert('Contraseña actualizada. Ya tienes sesión activa.');
   } catch (e) {
@@ -2030,7 +2031,7 @@ refreshAuth();
   if (f) f.addEventListener('keydown', function (e) { if (e.key === 'Enter') renderMgmt(f.value); });
 })();
 if (supa && supa.auth && supa.auth.onAuthStateChange) {
-  supa.auth.onAuthStateChange(function (event, session) {
+  supa.auth.onAuthStateChange(async function (event, session) {
     if (event === 'PASSWORD_RECOVERY') {
       authState.recovery = true;
       authState.user = session ? session.user : null;
