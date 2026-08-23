@@ -196,6 +196,19 @@
         'Si recibiste este documento, comunícate al 222 941 7295.</p></div></div>';
     }
 
+    function showLegacyAmbiguous(folio, rows) {
+      var latest = rows[0];
+      var rev = latest && latest.revision != null
+        ? 'R' + String(latest.revision).padStart(2, '0')
+        : 'la revisión vigente';
+      resultEl.innerHTML =
+        '<div class="status wait"><div class="icon">i</div>' +
+        '<div><h3>QR histórico: verifica el archivo</h3>' +
+        '<p>Este QR identifica el folio <b>' + esc(folio) + '</b>, pero no una revisión concreta. ' +
+        'El folio tiene ' + rows.length + ' versiones registradas y la vigente es <b>' + esc(rev) + '</b>. ' +
+        'Para saber si el documento que recibiste sigue vigente, sube el PDF en el recuadro inferior.</p></div></div>';
+    }
+
     function showNotFound(folio) {
       resultEl.innerHTML =
         '<div class="status bad"><div class="icon">!</div>' +
@@ -233,7 +246,7 @@
       } catch (e) { showError(e.message || 'Error de conexión.'); }
     }
 
-    async function searchByFolio(folio) {
+    async function searchByFolio(folio, legacyQr) {
       folio = (folio || '').trim();
       if (!folio) { resultEl.innerHTML = ''; return; }
       if (!supa) { showError('Servicio de verificación no disponible.'); return; }
@@ -245,6 +258,10 @@
           .order('created_at', { ascending: false });
         if (res.error) throw res.error;
         var rows = res.data || [];
+        if (legacyQr && rows.length > 1) {
+          showLegacyAmbiguous(folio, rows);
+          return;
+        }
         var activas = rows.filter(function (x) { return x.estado === 'activo'; });
         if (activas.length) showAuthentic(activas);
         else if (rows.some(function (x) { return x.estado === 'anulado'; })) showAnulado(folio);
@@ -321,7 +338,7 @@
       } else if (folio) {
         // Compatibilidad con QRs históricos: identifican el folio, no la revisión.
         folioInput.value = folio;
-        searchByFolio(folio);
+        searchByFolio(folio, true);
       }
     })();
   </script>
