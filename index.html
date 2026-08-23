@@ -320,6 +320,14 @@
       flex: 1; padding: 8px 11px; border: 1px solid #cdd8cf; border-radius: 8px;
       font-family: inherit; font-size: 0.85rem;
     }
+    .mgmt-search select {
+      padding: 8px 10px; border: 1px solid #cdd8cf; border-radius: 8px;
+      background: #fff; font-family: inherit; font-size: 0.8rem;
+    }
+    .mgmt-title { font-weight: 700; color: #005600; margin: 12px 0 8px; }
+    .mgmt-folio { font-weight: 700; color: #243b2a; }
+    .mgmt-rev { font-family: ui-monospace, monospace; font-weight: 700; color: #005600; }
+    .role-badge { font-size: .68rem; padding: 2px 7px; border-radius: 12px; background: #e7f1e9; color: #005600; font-weight: 700; }
     .mgmt-result { margin-top: 10px; font-size: 0.82rem; }
     .mgmt-row {
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -385,10 +393,18 @@
   <!-- PANEL DE GESTIÓN DE FOLIOS (solo con sesión) -->
   <div class="mgmt hidden" id="mgmtPanel">
     <div class="mgmt-search">
-      <input type="text" id="mgmtFolio" placeholder="Folio a gestionar (ej. EA2601-036-0012)" autocomplete="off" />
+      <input type="text" id="mgmtFolio" placeholder="Buscar folio (vacío = mostrar todos)" autocomplete="off" />
+      <select id="mgmtEstado" aria-label="Filtrar por estado">
+        <option value="">Todos los estados</option>
+        <option value="activo">Vigentes</option>
+        <option value="reemplazado">Reemplazados</option>
+        <option value="anulado">Anulados</option>
+      </select>
       <button class="btn-mini" id="btnMgmtSearch" type="button">Buscar</button>
+      <button class="btn-mini ghost" id="btnMgmtAll" type="button">Ver todos</button>
     </div>
     <div id="mgmtResult" class="mgmt-result"></div>
+    <div id="opsPanel" class="mgmt-result hidden"></div>
   </div>
 
   <!-- STEPPER (se genera dinámicamente según el modo) -->
@@ -706,14 +722,27 @@ async function sha256Hex(bytes) {
 // =========================================================================
 // SESIÓN (para registrar folios verificables)
 // =========================================================================
-var authState = { user: null, recovery: false };
+var authState = { user: null, profile: null, recovery: false };
+
+async function loadCurrentProfile() {
+  authState.profile = null;
+  if (!supa || !authState.user) return;
+  try {
+    var res = await supa.from('operadores')
+      .select('user_id,email,nombre,rol,activo')
+      .eq('user_id', authState.user.id)
+      .maybeSingle();
+    if (!res.error) authState.profile = res.data || null;
+  } catch (e) { authState.profile = null; }
+}
 
 async function refreshAuth() {
   if (!supa) { renderAuthBar(); return; }
   try {
     var res = await supa.auth.getSession();
     authState.user = (res && res.data && res.data.session) ? res.data.session.user : null;
-  } catch (e) { authState.user = null; }
+    await loadCurrentProfile();
+  } catch (e) { authState.user = null; authState.profile = null; }
   renderAuthBar();
 }
 
@@ -740,15 +769,39 @@ function renderAuthBar() {
     return;
   }
   if (authState.user) {
-    dot.classList.add('on');
-    info.textContent = 'Sesión activa: ' + authState.user.email + ' · los informes finales se registrarán para verificación.';
-    actions.innerHTML =
-      '<button class="btn-mini ghost" id="btnMgmtToggle" type="button">Gestionar folios</button>' +
-      '<button class="btn-mini ghost" id="btnAuthLogout" type="button">Cerrar sesión</button>';
+    var profile = authState.profile;
+    var canOperate = profile && profile.activo;
+    dot.classList.toggle('on', !!canOperate);
+    if (canOperate) {
+      info.textContent = 'Sesión activa: ' + (profile.nombre || authState.user.email) +
+        ' · ' + profile.rol;
+      actions.innerHTML =
+        '<button class="btn-mini ghost" id="btnMgmtToggle" type="button">Folios</button>' +
+        (profile.rol === 'administrador'
+          ? '<button class="btn-mini ghost" id="btnOpsToggle" type="button">Operadores</button>'
+          : '') +
+        '<button class="btn-mini ghost" id="btnAuthLogout" type="button">Cerrar sesión</button>';
+      document.getElementById('btnMgmtToggle').addEventListener('click', function () {
+        if (!mgmt) return;
+        mgmt.classList.toggle('hidden');
+        document.getElementById('opsPanel').classList.add('hidden');
+        document.getElementById('mgmtResult').classList.remove('hidden');
+        if (!mgmt.classList.contains('hidden')) renderMgmt('');
+      });
+      if (profile.rol === 'administrador') {
+        document.getElementById('btnOpsToggle').addEventListener('click', function () {
+          if (!mgmt) return;
+          mgmt.classList.remove('hidden');
+          document.getElementById('mgmtResult').classList.add('hidden');
+          document.getElementById('opsPanel').classList.remove('hidden');
+          renderOperadores();
+        });
+      }
+    } else {
+      info.textContent = 'Cuenta sin perfil activo. Solicita acceso al administrador.';
+      actions.innerHTML = '<button class="btn-mini ghost" id="btnAuthLogout" type="button">Cerrar sesión</button>';
+    }
     document.getElementById('btnAuthLogout').addEventListener('click', doLogout);
-    document.getElementById('btnMgmtToggle').addEventListener('click', function () {
-      if (mgmt) mgmt.classList.toggle('hidden');
-    });
   } else {
     dot.classList.remove('on');
     info.textContent = 'Inicia sesión para registrar folios verificables (solo tú).';
@@ -771,40 +824,76 @@ function fmtFecha(d) {
 }
 async function renderMgmt(folio) {
   var box = document.getElementById('mgmtResult');
+  var estadoEl = document.getElementById('mgmtEstado');
+  var estado = estadoEl ? estadoEl.value : '';
   folio = (folio || '').trim();
-  if (!folio) { box.innerHTML = '<div class="mgmt-note">Escribe un folio y pulsa Buscar.</div>'; return; }
-  box.innerHTML = '<div class="mgmt-note">Buscando…</div>';
-  var r = await listarFolio(folio);
+  box.innerHTML = '<div class="mgmt-note">Cargando folios…</div>';
+  var r = await listarFolios(folio, estado);
   if (!r.ok) { box.innerHTML = '<div class="mgmt-note">Error: ' + escHtml(r.reason) + '</div>'; return; }
-  if (!r.rows.length) { box.innerHTML = '<div class="mgmt-note">Sin registros para "' + escHtml(folio) + '".</div>'; return; }
+  if (!r.rows.length) { box.innerHTML = '<div class="mgmt-note">No hay registros con estos filtros.</div>'; return; }
 
-  var activas = r.rows.filter(function (x) { return x.estado === 'activo'; }).length;
-  var html = '';
+  var vigentes = r.rows.filter(function (x) { return x.estado === 'activo'; }).length;
+  var html = '<div class="mgmt-title">' + r.rows.length + ' versiones · ' + vigentes + ' vigentes</div>';
   r.rows.forEach(function (x) {
     var st = x.estado || 'activo';
+    var rev = 'R' + String(x.revision == null ? 0 : x.revision).padStart(2, '0');
     html += '<div class="mgmt-row">' +
-      '<div><span class="mgmt-badge ' + st + '">' + st + '</span> ' +
-      '<span class="mgmt-meta">' + fmtFecha(x.fecha_emision || x.created_at) + ' · ' + (x.num_paginas != null ? x.num_paginas + ' pág.' : '') + '</span></div>' +
-      '<div class="mgmt-meta" style="font-family:monospace">…' + escHtml((x.sha256 || '').slice(-10)) + '</div>' +
+      '<div><span class="mgmt-folio">' + escHtml(x.folio) + '</span> ' +
+      '<span class="mgmt-rev">' + rev + '</span> ' +
+      '<span class="mgmt-badge ' + st + '">' + (st === 'activo' ? 'vigente' : st) + '</span>' +
+      '<div class="mgmt-meta">' + fmtFecha(x.fecha_emision || x.created_at) + ' · ' +
+      (x.num_paginas != null ? x.num_paginas + ' pág. · ' : '') +
+      'huella …' + escHtml((x.sha256 || '').slice(-10)) + '</div></div>' +
+      (st === 'activo' && authState.profile && authState.profile.rol === 'administrador'
+        ? '<button class="btn-mini btn-warn btn-anular-row" data-folio="' + escHtml(x.folio) + '" type="button">Anular</button>'
+        : '') +
       '</div>';
   });
-  html += '<div class="mgmt-row" style="background:#f7faf7">' +
-    '<div class="mgmt-meta">' + activas + ' activa(s) de ' + r.rows.length + ' registro(s)</div>' +
-    '<div class="mgmt-actions">' +
-      '<button class="btn-mini btn-warn" id="btnAnular" type="button">Anular folio</button>' +
-      '<button class="btn-mini btn-danger" id="btnEliminar" type="button">Eliminar definitivamente</button>' +
-    '</div></div>';
   box.innerHTML = html;
 
-  document.getElementById('btnAnular').addEventListener('click', async function () {
-    if (!confirm('¿Anular el folio "' + folio + '"? Dejará de validar y la verificación indicará que fue anulado. Puedes registrarlo de nuevo después.')) return;
-    var res = await anularFolio(folio);
-    if (res.ok) renderMgmt(folio); else alert('No se pudo anular: ' + res.reason);
+  Array.prototype.forEach.call(box.querySelectorAll('.btn-anular-row'), function (btn) {
+    btn.addEventListener('click', async function () {
+      var target = btn.getAttribute('data-folio');
+      var motivo = (prompt('Motivo de anulación para "' + target + '":') || '').trim();
+      if (!motivo) return;
+      var res = await anularFolio(target, motivo);
+      if (res.ok) renderMgmt(folio); else alert('No se pudo anular: ' + res.reason);
+    });
   });
-  document.getElementById('btnEliminar').addEventListener('click', async function () {
-    if (!confirm('¿ELIMINAR definitivamente todos los registros del folio "' + folio + '"? Esto no se puede deshacer y se pierde el historial.')) return;
-    var res = await eliminarFolio(folio);
-    if (res.ok) renderMgmt(folio); else alert('No se pudo eliminar: ' + res.reason);
+}
+
+async function renderOperadores() {
+  var box = document.getElementById('opsPanel');
+  box.innerHTML = '<div class="mgmt-note">Cargando operadores…</div>';
+  var res = await supa.from('operadores')
+    .select('user_id,email,nombre,rol,activo,created_at')
+    .order('created_at', { ascending: true });
+  if (res.error) { box.innerHTML = '<div class="mgmt-note">Error: ' + escHtml(res.error.message) + '</div>'; return; }
+  var html = '<div class="mgmt-title">Operadores</div>' +
+    '<div class="mgmt-note">Las cuentas nuevas se crean en Supabase Authentication y aparecen aquí automáticamente.</div>';
+  (res.data || []).forEach(function (x) {
+    html += '<div class="mgmt-row"><div><b>' + escHtml(x.nombre || x.email || 'Sin nombre') + '</b>' +
+      '<div class="mgmt-meta">' + escHtml(x.email || '') + '</div></div>' +
+      '<div class="mgmt-actions"><span class="role-badge">' + escHtml(x.rol) + '</span>' +
+      '<button class="btn-mini ghost btn-role" data-id="' + escHtml(x.user_id) +
+      '" data-role="' + escHtml(x.rol) + '" data-active="' + String(!!x.activo) + '" type="button">' +
+      (x.activo ? 'Cambiar' : 'Reactivar') + '</button></div></div>';
+  });
+  box.innerHTML = html;
+  Array.prototype.forEach.call(box.querySelectorAll('.btn-role'), function (btn) {
+    btn.addEventListener('click', async function () {
+      var currentRole = btn.getAttribute('data-role');
+      var currentActive = btn.getAttribute('data-active') === 'true';
+      var nextRole = currentRole === 'administrador' ? 'operador' : 'administrador';
+      var choice = prompt('Escribe "operador", "administrador" o "inactivo":', currentActive ? nextRole : currentRole);
+      if (!choice) return;
+      choice = choice.trim().toLowerCase();
+      var nextActive = choice !== 'inactivo';
+      if (!nextActive) choice = currentRole;
+      if (choice !== 'operador' && choice !== 'administrador') { alert('Valor no válido.'); return; }
+      var upd = await actualizarOperador(btn.getAttribute('data-id'), choice, nextActive);
+      if (upd.ok) renderOperadores(); else alert('No se pudo actualizar: ' + upd.reason);
+    });
   });
 }
 
@@ -819,6 +908,7 @@ async function doLogin() {
     var res = await supa.auth.signInWithPassword({ email: email, password: pass });
     if (res.error) throw res.error;
     authState.user = res.data.user;
+    await loadCurrentProfile();
   } catch (e) {
     alert('No se pudo iniciar sesión: ' + (e.message || e));
   }
@@ -829,6 +919,7 @@ async function doLogout() {
   if (!supa) return;
   try { await supa.auth.signOut(); } catch (e) {}
   authState.user = null;
+  authState.profile = null;
   renderAuthBar();
 }
 
@@ -866,6 +957,7 @@ async function doSetNewPassword() {
     if (res.error) throw res.error;
     authState.recovery = false;
     authState.user = res.data.user;
+    await loadCurrentProfile();
     renderAuthBar();
     alert('Contraseña actualizada. Ya tienes sesión activa.');
   } catch (e) {
@@ -874,54 +966,55 @@ async function doSetNewPassword() {
   }
 }
 
-// Registra un informe final para verificación pública por folio.
-// Si ya existía una versión ACTIVA del mismo folio, la marca como
-// "reemplazado" (correcciones) antes de insertar la nueva.
-// Devuelve { ok:true, replaced:n } o { ok:false, reason:'...' }.
+// Registra la revisión y reemplaza la anterior dentro de una sola transacción.
 async function registerInforme(row) {
   if (!supa) return { ok: false, reason: 'no-config' };
-  if (!authState.user) return { ok: false, reason: 'no-session' };
+  if (!authState.user || !authState.profile || !authState.profile.activo) {
+    return { ok: false, reason: 'no-session' };
+  }
   try {
-    var replaced = 0;
-    if (row.folio) {
-      var upd = await supa.from('informes')
-        .update({ estado: 'reemplazado' })
-        .eq('folio', row.folio).eq('estado', 'activo')
-        .select('id');
-      if (!upd.error && upd.data) replaced = upd.data.length;
-    }
-    var res = await supa.from('informes').insert(row);
+    var res = await supa.rpc('registrar_revision', {
+      p_public_id: row.public_id,
+      p_folio: row.folio,
+      p_sha256: row.sha256,
+      p_num_paginas: row.num_paginas
+    });
     if (res.error) return { ok: false, reason: res.error.message };
-    return { ok: true, replaced: replaced };
+    return Object.assign({ ok: true }, res.data || {});
   } catch (e) {
     return { ok: false, reason: (e && e.message) || 'error' };
   }
 }
 
-// Gestión de folios (requiere sesión).
-async function anularFolio(folio) {
+async function anularFolio(folio, motivo) {
   if (!supa || !authState.user) return { ok: false, reason: 'no-session' };
   try {
-    var res = await supa.from('informes').update({ estado: 'anulado' })
-      .eq('folio', folio).neq('estado', 'anulado').select('id');
+    var res = await supa.rpc('anular_folio', { p_folio: folio, p_motivo: motivo });
     if (res.error) return { ok: false, reason: res.error.message };
-    return { ok: true, count: (res.data || []).length };
+    return { ok: true, data: res.data };
   } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
 }
-async function eliminarFolio(folio) {
-  if (!supa || !authState.user) return { ok: false, reason: 'no-session' };
+
+async function actualizarOperador(userId, rol, activo) {
   try {
-    var res = await supa.from('informes').delete().eq('folio', folio).select('id');
+    var res = await supa.rpc('actualizar_operador', {
+      p_user_id: userId, p_rol: rol, p_activo: activo
+    });
     if (res.error) return { ok: false, reason: res.error.message };
-    return { ok: true, count: (res.data || []).length };
+    return { ok: true, data: res.data };
   } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
 }
-async function listarFolio(folio) {
+
+async function listarFolios(folio, estado) {
   if (!supa) return { ok: false, reason: 'no-config' };
   try {
-    var res = await supa.from('informes')
-      .select('folio,sha256,num_paginas,fecha_emision,estado,created_at')
-      .eq('folio', folio).order('created_at', { ascending: false });
+    var q = supa.from('informes')
+      .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at,updated_at,operador_id')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (folio) q = q.ilike('folio', '%' + folio + '%');
+    if (estado) q = q.eq('estado', estado);
+    var res = await q;
     if (res.error) return { ok: false, reason: res.error.message };
     return { ok: true, rows: res.data || [] };
   } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
@@ -1139,6 +1232,9 @@ function validateConfig() {
   var needsReport = state.mode === 'final' || state.applyPagination || state.textOption === 'predefined';
   if (needsReport && !state.reportNumber.trim()) {
     errors.push('Por favor ingresa el número de informe.');
+  }
+  if (state.mode === 'final' && state.includeCertificate && state.selectedFiles.length > 1) {
+    errors.push('Para informes verificables procesa un PDF por vez: cada archivo necesita su propio folio y QR.');
   }
   return errors;
 }
@@ -1423,7 +1519,8 @@ async function flattenPDF(pdfBytes, opts) {
 // =========================================================================
 async function buildCertificationPage(certPage, pdfDoc, opts) {
   var font = opts.font, fontBold = opts.fontBold,
-      reportNumber = opts.reportNumber, totalPages = opts.totalPages;
+      reportNumber = opts.reportNumber, totalPages = opts.totalPages,
+      verificationId = opts.verificationId;
   var sz = certPage.getSize();
   var W = sz.width, H = sz.height;
 
@@ -1503,7 +1600,7 @@ async function buildCertificationPage(certPage, pdfDoc, opts) {
 
   // ================= VERIFICACIÓN + QR =================
   var verifyUrl = (typeof VERIFY_BASE_URL !== 'undefined' ? VERIFY_BASE_URL : 'https://www.ejecutivambiental.com') +
-                  '?folio=' + encodeURIComponent(reportNumber || '');
+                  '?documento=' + encodeURIComponent(verificationId || '');
   var qrDataUrl = generateQRCode(verifyUrl, 420, 'M');
   var qrBytes = await fetch(qrDataUrl).then(function(r) { return r.arrayBuffer(); });
   var qrImg = await pdfDoc.embedPng(qrBytes);
@@ -1614,6 +1711,11 @@ async function processSinglePDF(file, opts) {
       shouldFlatten = opts.shouldFlatten, flatScale = opts.flatScale, flatQuality = opts.flatQuality,
       enableWatermark = opts.enableWatermark, enablePagination = opts.enablePagination,
       includeCertificate = opts.includeCertificate;
+  // Cada PDF certificable recibe un identificador inmutable. El folio puede
+  // repetirse en una corrección, pero el QR de cada revisión siempre es distinto.
+  var verificationId = (mode === 'final' && includeCertificate)
+    ? crypto.randomUUID()
+    : '';
 
   var bytes = await file.arrayBuffer();
   var pdfDoc = await PDFLib.PDFDocument.load(bytes);
@@ -1659,7 +1761,10 @@ async function processSinglePDF(file, opts) {
   if (includeCert) {
     var totalPages = pages.length;
     var certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
-    await buildCertificationPage(certPage, pdfDoc, { font: font, fontBold: fontBold, reportNumber: reportNumber, totalPages: totalPages });
+    await buildCertificationPage(certPage, pdfDoc, {
+      font: font, fontBold: fontBold, reportNumber: reportNumber,
+      totalPages: totalPages, verificationId: verificationId
+    });
     if (enableWatermark) {
       applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
     }
@@ -1714,6 +1819,7 @@ async function processSinglePDF(file, opts) {
     sizeMB: (blob.size / (1024 * 1024)).toFixed(2),
     // Datos de verificación (solo relevantes para informe final con certificado)
     verifiable: includeCert,
+    publicId: verificationId,
     folio: reportNumber || '',
     numPaginas: finalPdfDoc.getPageCount(),
     sha256: sha256
@@ -1759,13 +1865,13 @@ async function processFiles() {
       } else {
         document.getElementById('processingNote').textContent = 'Registrando folio ' + res.folio + '...';
         var reg = await registerInforme({
-          folio: res.folio, sha256: res.sha256,
-          num_paginas: res.numPaginas, estado: 'activo'
+          public_id: res.publicId, folio: res.folio,
+          sha256: res.sha256, num_paginas: res.numPaginas
         });
         res.regStatus = reg.ok
           ? { type: 'ok', msg: reg.replaced
-              ? 'Registrado — reemplaza ' + reg.replaced + ' versión(es) anterior(es) de este folio.'
-              : 'Registrado para verificación en línea.' }
+              ? 'Registrado como R' + String(reg.revision).padStart(2, '0') + ' — la revisión anterior dejó de estar vigente.'
+              : 'Registrado como R' + String(reg.revision).padStart(2, '0') + ' para verificación en línea.' }
           : { type: 'err', msg: 'No se pudo registrar: ' + reg.reason };
       }
     }
@@ -1916,11 +2022,16 @@ renderAuthBar();
 refreshAuth();
 (function () {
   var b = document.getElementById('btnMgmtSearch'), f = document.getElementById('mgmtFolio');
+  var all = document.getElementById('btnMgmtAll'), estado = document.getElementById('mgmtEstado');
   if (b) b.addEventListener('click', function () { renderMgmt(f.value); });
+  if (all) all.addEventListener('click', function () {
+    f.value = ''; if (estado) estado.value = ''; renderMgmt('');
+  });
+  if (estado) estado.addEventListener('change', function () { renderMgmt(f.value); });
   if (f) f.addEventListener('keydown', function (e) { if (e.key === 'Enter') renderMgmt(f.value); });
 })();
 if (supa && supa.auth && supa.auth.onAuthStateChange) {
-  supa.auth.onAuthStateChange(function (event, session) {
+  supa.auth.onAuthStateChange(async function (event, session) {
     if (event === 'PASSWORD_RECOVERY') {
       authState.recovery = true;
       authState.user = session ? session.user : null;
@@ -1929,6 +2040,7 @@ if (supa && supa.auth && supa.auth.onAuthStateChange) {
     }
     authState.recovery = false;
     authState.user = session ? session.user : null;
+    await loadCurrentProfile();
     renderAuthBar();
   });
 }

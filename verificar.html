@@ -170,6 +170,7 @@
         '<p>Este folio fue emitido y registrado por Ejecutiva Ambiental.</p></div></div>' +
         '<div class="details">' +
           '<div class="detail-row"><span class="k">Folio</span><span class="v">' + esc(r.folio) + '</span></div>' +
+          '<div class="detail-row"><span class="k">Revisión</span><span class="v">R' + String(r.revision == null ? 0 : r.revision).padStart(2, '0') + '</span></div>' +
           '<div class="detail-row"><span class="k">Fecha de emisión</span><span class="v">' + esc(fmtDate(r.fecha_emision || r.created_at)) + '</span></div>' +
           '<div class="detail-row"><span class="k">Total de páginas</span><span class="v">' + esc(r.num_paginas != null ? r.num_paginas : '—') + '</span></div>' +
           '<div class="detail-row"><span class="k">Estado</span><span class="v">Activo</span></div>' +
@@ -178,11 +179,12 @@
         '<p class="hint" style="margin-top:14px">Para máxima certeza, arrastra abajo el PDF que recibiste y confirmaremos que no fue alterado.</p>';
     }
 
-    function showSuperseded(folio) {
+    function showSuperseded(folio, revision) {
+      var rev = revision == null ? '' : ' R' + String(revision).padStart(2, '0');
       resultEl.innerHTML =
         '<div class="status bad"><div class="icon">!</div>' +
         '<div><h3>Versión no vigente</h3>' +
-        '<p>El folio <b>' + esc(folio) + '</b> existe, pero fue <b>reemplazado por una versión corregida</b>. ' +
+        '<p>La versión <b>' + esc(folio + rev) + '</b> fue <b>reemplazada por una corrección</b> y ya no es válida. ' +
         'Solicita al emisor el documento vigente. Tel. 222 941 7295.</p></div></div>';
     }
 
@@ -210,6 +212,27 @@
         '<div><h3>No se pudo consultar</h3><p>' + esc(msg) + '</p></div></div>';
     }
 
+    // Verifica la revisión exacta codificada en el QR.
+    async function searchByDocumento(publicId) {
+      publicId = (publicId || '').trim();
+      if (!publicId) return;
+      if (!supa) { showError('Servicio de verificación no disponible.'); return; }
+      showWait('Consultando la revisión exacta del documento…');
+      try {
+        var res = await supa.from('informes')
+          .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at')
+          .eq('public_id', publicId)
+          .maybeSingle();
+        if (res.error) throw res.error;
+        var r = res.data;
+        if (!r) { showNotFound('identificador desconocido'); return; }
+        folioInput.value = r.folio;
+        if (r.estado === 'activo') showAuthentic([r]);
+        else if (r.estado === 'anulado') showAnulado(r.folio);
+        else showSuperseded(r.folio, r.revision);
+      } catch (e) { showError(e.message || 'Error de conexión.'); }
+    }
+
     async function searchByFolio(folio) {
       folio = (folio || '').trim();
       if (!folio) { resultEl.innerHTML = ''; return; }
@@ -217,7 +240,7 @@
       showWait('Buscando el folio ' + folio + '…');
       try {
         var res = await supa.from('informes')
-          .select('folio,sha256,num_paginas,fecha_emision,estado,created_at')
+          .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at')
           .eq('folio', folio)
           .order('created_at', { ascending: false });
         if (res.error) throw res.error;
@@ -225,7 +248,7 @@
         var activas = rows.filter(function (x) { return x.estado === 'activo'; });
         if (activas.length) showAuthentic(activas);
         else if (rows.some(function (x) { return x.estado === 'anulado'; })) showAnulado(folio);
-        else if (rows.length) showSuperseded(folio);
+        else if (rows.length) showSuperseded(folio, rows[0].revision);
         else showNotFound(folio);
       } catch (e) { showError(e.message || 'Error de conexión.'); }
     }
@@ -249,7 +272,7 @@
 
         // Buscamos el archivo por su huella (cualquier estado).
         var res = await supa.from('informes')
-          .select('folio,sha256,num_paginas,fecha_emision,estado,created_at')
+          .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at')
           .eq('sha256', hash)
           .order('created_at', { ascending: false }).limit(1);
         if (res.error) throw res.error;
@@ -258,7 +281,7 @@
           var r = res.data[0];
           folioInput.value = r.folio;
           if (r.estado === 'activo') {
-            fileResultEl.innerHTML = '<div class="status ok" style="margin-top:14px"><div class="icon">✓</div><div><h3>Archivo auténtico e íntegro</h3><p>Coincide exactamente con el folio <b>' + esc(r.folio) + '</b> registrado por Ejecutiva Ambiental. No fue alterado.</p></div></div>';
+            fileResultEl.innerHTML = '<div class="status ok" style="margin-top:14px"><div class="icon">✓</div><div><h3>Archivo auténtico e íntegro</h3><p>Coincide exactamente con <b>' + esc(r.folio) + ' R' + String(r.revision == null ? 0 : r.revision).padStart(2, '0') + '</b> registrado por Ejecutiva Ambiental. No fue alterado.</p></div></div>';
           } else if (r.estado === 'anulado') {
             fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Documento anulado</h3><p>Este archivo corresponde al folio <b>' + esc(r.folio) + '</b>, que fue <b>anulado</b> y ya no es válido.</p></div></div>';
           } else {
@@ -288,11 +311,18 @@
       if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
     });
 
-    // ===== Autoconsulta desde ?folio= =====
+    // ===== Autoconsulta desde el QR =====
     (function () {
       var params = new URLSearchParams(window.location.search);
+      var documento = params.get('documento');
       var folio = params.get('folio');
-      if (folio) { folioInput.value = folio; searchByFolio(folio); }
+      if (documento) {
+        searchByDocumento(documento);
+      } else if (folio) {
+        // Compatibilidad con QRs históricos: identifican el folio, no la revisión.
+        folioInput.value = folio;
+        searchByFolio(folio);
+      }
     })();
   </script>
 </body>
