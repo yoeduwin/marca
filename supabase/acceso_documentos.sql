@@ -1,4 +1,4 @@
--- Acceso controlado al informe original desde el QR de MARCA.
+-- Acceso controlado al informe digital desde el QR de MARCA.
 -- Requiere haber aplicado previamente supabase/folios_v2.sql.
 -- Diseño genérico; la activación por norma se decide desde el sistema de envíos.
 
@@ -13,10 +13,97 @@ create index if not exists informes_acceso_qr_idx
   on public.informes(public_id)
   where acceso_informe_qr = true and drive_url is not null;
 
--- Vincula la entrega de Drive con la revisión ACTIVA de un folio.
--- Se ejecuta desde la PC fija con una cuenta autenticada y activa de MARCA.
-create or replace function private.vincular_entrega_por_folio(
-  p_folio text,
+-- El public_id funciona como credencial portadora del QR. Evitamos que pueda
+-- obtenerse enumerando folios mediante SELECT anónimo sobre la tabla.
+revoke select on table public.informes from anon;
+revoke select (
+  public_id, folio, revision, sha256, num_paginas,
+  fecha_emision, estado, created_at, updated_at
+) on public.informes from anon;
+
+-- Verificación pública de una revisión exacta. No devuelve public_id.
+create or replace function public.verificar_documento(p_public_id uuid)
+returns table (
+  folio text,
+  revision integer,
+  sha256 text,
+  num_paginas integer,
+  fecha_emision date,
+  estado text,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select i.folio, i.revision, i.sha256, i.num_paginas,
+         i.fecha_emision, i.estado, i.created_at
+  from public.informes i
+  where i.public_id = p_public_id
+  limit 1;
+$$;
+
+-- Búsqueda pública por folio para conservar el buscador y QRs históricos.
+-- Deliberadamente no expone public_id ni el enlace de Drive.
+create or replace function public.buscar_folio(p_folio text)
+returns table (
+  folio text,
+  revision integer,
+  sha256 text,
+  num_paginas integer,
+  fecha_emision date,
+  estado text,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select i.folio, i.revision, i.sha256, i.num_paginas,
+         i.fecha_emision, i.estado, i.created_at
+  from public.informes i
+  where upper(btrim(i.folio)) = upper(btrim(coalesce(p_folio, '')))
+  order by i.created_at desc, i.id desc;
+$$;
+
+-- Verificación pública por huella. Tampoco devuelve public_id.
+create or replace function public.verificar_archivo(p_sha256 text)
+returns table (
+  folio text,
+  revision integer,
+  sha256 text,
+  num_paginas integer,
+  fecha_emision date,
+  estado text,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select i.folio, i.revision, i.sha256, i.num_paginas,
+         i.fecha_emision, i.estado, i.created_at
+  from public.informes i
+  where lower(btrim(i.sha256)) = lower(btrim(coalesce(p_sha256, '')))
+  order by i.created_at desc, i.id desc
+  limit 1;
+$$;
+
+revoke execute on function public.verificar_documento(uuid) from public;
+revoke execute on function public.buscar_folio(text) from public;
+revoke execute on function public.verificar_archivo(text) from public;
+grant execute on function public.verificar_documento(uuid) to anon, authenticated;
+grant execute on function public.buscar_folio(text) to anon, authenticated;
+grant execute on function public.verificar_archivo(text) to anon, authenticated;
+
+-- Vincula Drive con la revisión EXACTA indicada por el UUID que ya está dentro
+-- del QR del PDF. Una revisión reemplazada/anulada se rechaza: nunca se redirige
+-- un PDF antiguo al QR de una revisión nueva.
+create or replace function private.vincular_entrega_por_public_id(
+  p_public_id uuid,
   p_drive_file_id text,
   p_drive_url text,
   p_norma text,
@@ -28,7 +115,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_folio text := upper(btrim(coalesce(p_folio, '')));
   v_file_id text := btrim(coalesce(p_drive_file_id, ''));
   v_url text := btrim(coalesce(p_drive_url, ''));
   v_norma text := btrim(coalesce(p_norma, ''));
@@ -37,8 +123,8 @@ begin
   if (select auth.uid()) is null or not (select private.es_operador()) then
     raise exception 'Usuario sin permisos de operador' using errcode = '42501';
   end if;
-  if v_folio = '' then
-    raise exception 'El folio es obligatorio' using errcode = '22023';
+  if p_public_id is null then
+    raise exception 'El identificador público es obligatorio' using errcode = '22023';
   end if;
   if v_file_id = '' then
     raise exception 'El identificador de Drive es obligatorio' using errcode = '22023';
@@ -50,15 +136,17 @@ begin
   select *
     into v_informe
   from public.informes
-  where upper(btrim(folio)) = v_folio
-    and estado = 'activo'
-  order by created_at desc, id desc
+  where public_id = p_public_id
   limit 1
   for update;
 
   if v_informe.id is null then
-    raise exception 'No existe una revisión activa de MARCA para el folio %', v_folio
+    raise exception 'No existe una revisión de MARCA con ese identificador'
       using errcode = 'P0002';
+  end if;
+  if v_informe.estado <> 'activo' then
+    raise exception 'La revisión indicada ya no está vigente (estado: %)', v_informe.estado
+      using errcode = 'P0001';
   end if;
 
   update public.informes
@@ -74,10 +162,11 @@ begin
     informe_id, folio, accion, detalle, actor_id
   ) values (
     v_informe.id,
-    v_folio,
+    v_informe.folio,
     'entrega_vinculada',
     jsonb_build_object(
       'revision', v_informe.revision,
+      'public_id', v_informe.public_id,
       'norma', nullif(v_norma, ''),
       'drive_file_id', v_file_id,
       'acceso_informe_qr', coalesce(p_acceso_informe_qr, false)
@@ -87,7 +176,7 @@ begin
 
   return jsonb_build_object(
     'public_id', v_informe.public_id,
-    'folio', v_folio,
+    'folio', v_informe.folio,
     'revision', v_informe.revision,
     'norma', nullif(v_norma, ''),
     'acceso_informe_qr', coalesce(p_acceso_informe_qr, false),
@@ -96,8 +185,8 @@ begin
 end;
 $$;
 
-create or replace function public.vincular_entrega_por_folio(
-  p_folio text,
+create or replace function public.vincular_entrega_por_public_id(
+  p_public_id uuid,
   p_drive_file_id text,
   p_drive_url text,
   p_norma text,
@@ -108,8 +197,8 @@ language sql
 security invoker
 set search_path = ''
 as $$
-  select private.vincular_entrega_por_folio(
-    p_folio,
+  select private.vincular_entrega_por_public_id(
+    p_public_id,
     p_drive_file_id,
     p_drive_url,
     p_norma,
@@ -117,17 +206,23 @@ as $$
   );
 $$;
 
-revoke execute on function public.vincular_entrega_por_folio(text, text, text, text, boolean)
+revoke execute on function public.vincular_entrega_por_public_id(uuid, text, text, text, boolean)
   from public, anon;
-grant execute on function public.vincular_entrega_por_folio(text, text, text, text, boolean)
+grant execute on function public.vincular_entrega_por_public_id(uuid, text, text, text, boolean)
   to authenticated;
 
--- Consulta pública deliberadamente estrecha: el enlace NO se expone mediante
--- SELECT directo. Solo se devuelve al conocer el public_id UUID exacto del QR,
--- cuando la revisión sigue activa y el acceso fue habilitado.
-create or replace function public.obtener_acceso_documento(
-  p_public_id uuid
-)
+-- Compatibilidad defensiva: si una versión preliminar de esta migración llegó a
+-- ejecutarse, la RPC por folio no debe quedar utilizable.
+do $$
+begin
+  if to_regprocedure('public.vincular_entrega_por_folio(text,text,text,text,boolean)') is not null then
+    execute 'revoke execute on function public.vincular_entrega_por_folio(text,text,text,text,boolean) from public, anon, authenticated';
+  end if;
+end $$;
+
+-- El enlace sólo se entrega al conocer el UUID exacto del QR, y únicamente si
+-- esa revisión sigue vigente y fue habilitada para consulta.
+create or replace function public.obtener_acceso_documento(p_public_id uuid)
 returns table (
   folio text,
   revision integer,
