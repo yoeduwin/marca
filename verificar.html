@@ -14,19 +14,15 @@
       min-height: 100vh; padding: 24px 16px; color: #1b2b1f;
     }
     .wrap { max-width: 640px; margin: 0 auto; }
-
-    /* Encabezado de marca */
     .brand { text-align: center; margin-bottom: 22px; }
     .seal {
-      width: 66px; height: 66px; border-radius: 50%;
-      border: 2.5px solid #005600; display: inline-flex;
-      align-items: center; justify-content: center; margin-bottom: 10px;
+      width: 66px; height: 66px; border-radius: 50%; border: 2.5px solid #005600;
+      display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;
       box-shadow: inset 0 0 0 4px #fff, inset 0 0 0 5px #b48e2e;
       background: #fff; color: #005600; font-weight: 700; font-size: 1.5rem;
     }
     .brand h1 { font-size: 1.15rem; letter-spacing: .04em; color: #003800; }
     .brand .sub { font-size: .72rem; letter-spacing: .3em; color: #6a7a6d; margin-top: 3px; text-transform: uppercase; }
-
     .card {
       background: #fff; border-radius: 18px; overflow: hidden;
       box-shadow: 0 18px 50px rgba(0,60,20,.10); border: 1px solid #e2ece4;
@@ -34,8 +30,6 @@
     .card-head { padding: 18px 26px; border-bottom: 1px solid #eef3ef; }
     .card-head h2 { font-size: 1rem; color: #003800; }
     .card-body { padding: 24px 26px; }
-
-    /* Buscador por folio */
     .search { display: flex; gap: 8px; }
     .search input {
       flex: 1; padding: 12px 14px; border: 1.5px solid #cdd8cf; border-radius: 10px;
@@ -44,38 +38,37 @@
     .btn {
       padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer;
       background: #005600; color: #fff; font-weight: 600; font-family: inherit; font-size: .9rem;
-      transition: background .2s;
+      transition: background .2s; text-decoration: none; display: inline-block;
     }
     .btn:hover { background: #00762f; }
     .btn:disabled { opacity: .6; cursor: default; }
-
-    /* Estado / resultado */
     .result { margin-top: 22px; }
-    .status {
-      border-radius: 14px; padding: 20px 22px; display: flex; gap: 14px; align-items: flex-start;
-    }
+    .status { border-radius: 14px; padding: 20px 22px; display: flex; gap: 14px; align-items: flex-start; }
     .status .icon {
       width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #fff;
     }
-    .status.ok    { background: #edf9f0; border: 1px solid #b7e4c4; }
+    .status.ok { background: #edf9f0; border: 1px solid #b7e4c4; }
     .status.ok .icon { background: #00a043; }
-    .status.bad   { background: #fdeeee; border: 1px solid #f0c4c4; }
+    .status.bad { background: #fdeeee; border: 1px solid #f0c4c4; }
     .status.bad .icon { background: #c0392b; }
-    .status.wait  { background: #f4f7fb; border: 1px solid #d8e2ef; }
+    .status.wait { background: #f4f7fb; border: 1px solid #d8e2ef; }
     .status.wait .icon { background: #8a97a8; }
     .status h3 { font-size: 1.02rem; margin-bottom: 3px; }
     .status.ok h3 { color: #00812f; }
     .status.bad h3 { color: #b12a1c; }
     .status p { font-size: .85rem; color: #55655a; line-height: 1.5; }
-
     .details { margin-top: 18px; border-top: 1px dashed #dbe6dd; padding-top: 16px; }
     .detail-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: .9rem; border-bottom: 1px solid #f1f5f2; }
     .detail-row:last-child { border-bottom: none; }
     .detail-row .k { color: #6a7a6d; }
     .detail-row .v { font-weight: 600; color: #1b2b1f; text-align: right; }
-
-    /* Verificación de archivo */
+    .access-card {
+      margin-top: 18px; padding: 18px; text-align: center; border-radius: 12px;
+      background: #f6fbf8; border: 1px solid #cfe4d4;
+    }
+    .access-card p { font-size: .82rem; color: #526258; line-height: 1.5; margin-bottom: 12px; }
+    .access-card .norma { font-size: .75rem; color: #7b8b80; margin-top: 10px; margin-bottom: 0; }
     .filecheck { margin-top: 22px; }
     .filecheck .label { font-size: .82rem; color: #6a7a6d; margin-bottom: 8px; font-weight: 600; letter-spacing: .02em; }
     .drop {
@@ -85,7 +78,6 @@
     .drop:hover, .drop.over { border-color: #00a043; background: #f0faf3; }
     .drop b { color: #005600; }
     .hint { font-size: .75rem; color: #90a094; margin-top: 6px; }
-
     .foot { text-align: center; font-size: .72rem; color: #7d8c80; margin-top: 22px; line-height: 1.7; }
     .foot a { color: #005600; text-decoration: none; }
     .spinner {
@@ -105,17 +97,13 @@
     </div>
 
     <div class="card">
-      <div class="card-head">
-        <h2>Verifica un informe</h2>
-      </div>
+      <div class="card-head"><h2>Verifica un informe</h2></div>
       <div class="card-body">
         <div class="search">
           <input type="text" id="folioInput" placeholder="Número de folio (ej. EA2601-036-0012)" autocomplete="off" />
           <button class="btn" id="btnSearch" type="button">Verificar</button>
         </div>
-
         <div class="result" id="result"></div>
-
         <div class="filecheck">
           <div class="label">Verificación del archivo (opcional)</div>
           <div class="drop" id="drop">
@@ -135,7 +123,6 @@
   </div>
 
   <script>
-    // ===== Configuración (debe coincidir con la herramienta) =====
     var SUPABASE_URL = 'https://zwllvbmiyzblahtxizbk.supabase.co';
     var SUPABASE_KEY = 'sb_publishable_eMm-wi8-v4zx0LEa3rzlSw_KAnWXca8';
 
@@ -147,7 +134,11 @@
     var fileResultEl = document.getElementById('fileResult');
     var folioInput = document.getElementById('folioInput');
 
-    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[m]; }); }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[m];
+      });
+    }
 
     function fmtDate(d) {
       if (!d) return '—';
@@ -161,9 +152,31 @@
         '<div><h3>Consultando…</h3><p>' + esc(msg || '') + '</p></div></div>';
     }
 
+    async function loadDocumentAccess(publicId) {
+      var slot = document.getElementById('documentAccess');
+      if (!slot || !publicId || !supa) return;
+      try {
+        var res = await supa.rpc('obtener_acceso_documento', { p_public_id: publicId });
+        if (res.error) throw res.error;
+        var rows = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
+        if (!rows.length || !rows[0].url) return;
+        var r = rows[0];
+        slot.innerHTML =
+          '<div class="access-card">' +
+            '<p>Puede consultar el informe digital asociado a esta revisión.</p>' +
+            '<a class="btn" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">Ver informe</a>' +
+            (r.norma ? '<p class="norma">' + esc(r.norma) + '</p>' : '') +
+          '</div>';
+      } catch (e) {
+        console.warn('Acceso al informe no disponible:', e);
+      }
+    }
+
     function showAuthentic(rows) {
       var r = rows[0];
-      var extra = rows.length > 1 ? '<div class="detail-row"><span class="k">Archivos registrados</span><span class="v">' + rows.length + '</span></div>' : '';
+      var extra = rows.length > 1
+        ? '<div class="detail-row"><span class="k">Archivos registrados</span><span class="v">' + rows.length + '</span></div>'
+        : '';
       resultEl.innerHTML =
         '<div class="status ok"><div class="icon">✓</div>' +
         '<div><h3>Documento auténtico</h3>' +
@@ -176,7 +189,9 @@
           '<div class="detail-row"><span class="k">Estado</span><span class="v">Activo</span></div>' +
           extra +
         '</div>' +
+        '<div id="documentAccess"></div>' +
         '<p class="hint" style="margin-top:14px">Para máxima certeza, arrastra abajo el PDF que recibiste y confirmaremos que no fue alterado.</p>';
+      loadDocumentAccess(r.public_id);
     }
 
     function showSuperseded(folio, revision) {
@@ -225,7 +240,6 @@
         '<div><h3>No se pudo consultar</h3><p>' + esc(msg) + '</p></div></div>';
     }
 
-    // Verifica la revisión exacta codificada en el QR.
     async function searchByDocumento(publicId) {
       publicId = (publicId || '').trim();
       if (!publicId) return;
@@ -258,10 +272,7 @@
           .order('created_at', { ascending: false });
         if (res.error) throw res.error;
         var rows = res.data || [];
-        if (legacyQr && rows.length > 1) {
-          showLegacyAmbiguous(folio, rows);
-          return;
-        }
+        if (legacyQr && rows.length > 1) { showLegacyAmbiguous(folio, rows); return; }
         var activas = rows.filter(function (x) { return x.estado === 'activo'; });
         if (activas.length) showAuthentic(activas);
         else if (rows.some(function (x) { return x.estado === 'anulado'; })) showAnulado(folio);
@@ -286,8 +297,6 @@
         var buf = await file.arrayBuffer();
         var hash = await sha256Hex(buf);
         if (!supa) { showError('Servicio no disponible.'); return; }
-
-        // Buscamos el archivo por su huella (cualquier estado).
         var res = await supa.from('informes')
           .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at')
           .eq('sha256', hash)
@@ -313,7 +322,6 @@
       }
     }
 
-    // ===== Eventos =====
     document.getElementById('btnSearch').addEventListener('click', function () { searchByFolio(folioInput.value); });
     folioInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') searchByFolio(folioInput.value); });
 
@@ -328,7 +336,6 @@
       if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
     });
 
-    // ===== Autoconsulta desde el QR =====
     (function () {
       var params = new URLSearchParams(window.location.search);
       var documento = params.get('documento');
@@ -336,7 +343,6 @@
       if (documento) {
         searchByDocumento(documento);
       } else if (folio) {
-        // Compatibilidad con QRs históricos: identifican el folio, no la revisión.
         folioInput.value = folio;
         searchByFolio(folio, true);
       }
