@@ -315,9 +315,10 @@
       padding: 14px 32px; background: #f7faf7;
       border-bottom: 1px solid #e0eae2;
     }
-    .mgmt-search { display: flex; gap: 8px; }
+    .mgmt-search { display: flex; gap: 8px; flex-wrap: wrap; }
     .mgmt-search input {
-      flex: 1; padding: 8px 11px; border: 1px solid #cdd8cf; border-radius: 8px;
+      flex: 1 1 160px; min-width: 0; padding: 8px 11px;
+      border: 1px solid #cdd8cf; border-radius: 8px;
       font-family: inherit; font-size: 0.85rem;
     }
     .mgmt-search select {
@@ -346,6 +347,23 @@
     .btn-warn { background: #b8860b; }
     .mgmt-actions { display: flex; gap: 6px; }
     .mgmt-note { color: #6a7a6d; font-size: 0.78rem; padding: 4px 2px; }
+
+    /* Vinculación del informe (acceso desde el QR) */
+    .mgmt-item { margin-bottom: 6px; }
+    .mgmt-item > .mgmt-row { margin-bottom: 0; }
+    .link-form {
+      background: #fff; border: 1px solid #e6eee8; border-top: 2px solid #005600;
+      border-radius: 0 0 8px 8px; padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .link-form input[type="url"], .link-form input[type="text"] {
+      padding: 8px 11px; border: 1px solid #cdd8cf; border-radius: 8px;
+      font-family: inherit; font-size: 0.82rem; width: 100%; box-sizing: border-box;
+    }
+    .lf-check { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; color: #243b2a; }
+    .lf-check input:disabled + span { color: #97a49a; }
+    .lf-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .lf-msg { color: #c0392b; }
 
     /* Estado de registro en resultados */
     .r-reg { font-size: 0.74rem; margin-top: 3px; display: flex; align-items: center; gap: 5px; }
@@ -405,6 +423,7 @@
     </div>
     <div id="mgmtResult" class="mgmt-result"></div>
     <div id="opsPanel" class="mgmt-result hidden"></div>
+    <datalist id="normasQr"></datalist>
   </div>
 
   <!-- STEPPER (se genera dinámicamente según el modo) -->
@@ -704,6 +723,10 @@ var SUPABASE_KEY = 'sb_publishable_eMm-wi8-v4zx0LEa3rzlSw_KAnWXca8';
 // Cámbiala si el sitio vive en otro dominio (p. ej. https://ejecutivambiental.com/verificar.html).
 var VERIFY_BASE_URL = 'https://yoeduwin.github.io/marca/verificar.html';
 
+// Normas cuyo informe puede mostrarse al escanear el QR. Agregar una norma
+// aquí la habilita: no requiere tocar la base de datos ni el QR del PDF.
+var NORMAS_CON_ACCESO_QR = ['NOM-081-SEMARNAT-1994'];
+
 var supa = null;
 try {
   if (window.supabase && SUPABASE_URL.indexOf('http') === 0) {
@@ -837,19 +860,42 @@ async function renderMgmt(folio) {
   r.rows.forEach(function (x) {
     var st = x.estado || 'activo';
     var rev = 'R' + String(x.revision == null ? 0 : x.revision).padStart(2, '0');
-    html += '<div class="mgmt-row">' +
+    var esAdmin = authState.profile && authState.profile.rol === 'administrador';
+    var vinculado = !!x.drive_url;
+    html += '<div class="mgmt-item">' +
+      '<div class="mgmt-row">' +
       '<div><span class="mgmt-folio">' + escHtml(x.folio) + '</span> ' +
       '<span class="mgmt-rev">' + rev + '</span> ' +
       '<span class="mgmt-badge ' + st + '">' + (st === 'activo' ? 'vigente' : st) + '</span>' +
       '<div class="mgmt-meta">' + fmtFecha(x.fecha_emision || x.created_at) + ' · ' +
       (x.num_paginas != null ? x.num_paginas + ' pág. · ' : '') +
-      'huella …' + escHtml((x.sha256 || '').slice(-10)) + '</div></div>' +
-      (st === 'activo' && authState.profile && authState.profile.rol === 'administrador'
-        ? '<button class="btn-mini btn-warn btn-anular-row" data-folio="' + escHtml(x.folio) + '" type="button">Anular</button>'
+      'huella …' + escHtml((x.sha256 || '').slice(-10)) +
+      (vinculado
+        ? ' · informe ' + (x.acceso_informe_qr ? 'visible desde el QR' : 'vinculado sin acceso público')
         : '') +
+      '</div></div>' +
+      '<div class="mgmt-actions">' +
+      (st === 'activo'
+        ? '<button class="btn-mini ghost btn-informe" data-id="' + escHtml(x.public_id) +
+          '" type="button">' + (vinculado ? 'Editar informe' : 'Vincular informe') + '</button>'
+        : '') +
+      (st === 'activo' && esAdmin
+        ? '<button class="btn-mini btn-warn btn-anular-row" data-folio="' + escHtml(x.folio) +
+          '" type="button">Anular</button>'
+        : '') +
+      '</div>' +
+      '</div>' +
+      (st === 'activo' ? linkFormHtml(x) : '') +
       '</div>';
   });
   box.innerHTML = html;
+
+  var normasList = document.getElementById('normasQr');
+  if (normasList && !normasList.children.length) {
+    normasList.innerHTML = NORMAS_CON_ACCESO_QR.map(function (n) {
+      return '<option value="' + escHtml(n) + '"></option>';
+    }).join('');
+  }
 
   Array.prototype.forEach.call(box.querySelectorAll('.btn-anular-row'), function (btn) {
     btn.addEventListener('click', async function () {
@@ -860,6 +906,96 @@ async function renderMgmt(folio) {
       if (res.ok) renderMgmt(folio); else alert('No se pudo anular: ' + res.reason);
     });
   });
+
+  Array.prototype.forEach.call(box.querySelectorAll('.btn-informe'), function (btn) {
+    btn.addEventListener('click', function () {
+      var form = document.getElementById('lf-' + btn.getAttribute('data-id'));
+      if (!form) return;
+      form.classList.toggle('hidden');
+      if (!form.classList.contains('hidden')) {
+        syncAccesoInforme(form);
+        form.querySelector('.lf-url').focus();
+      }
+    });
+  });
+
+  Array.prototype.forEach.call(box.querySelectorAll('.link-form'), function (form) {
+    form.querySelector('.lf-norma').addEventListener('input', function () {
+      syncAccesoInforme(form);
+    });
+    form.querySelector('.lf-cancel').addEventListener('click', function () {
+      form.classList.add('hidden');
+    });
+    form.querySelector('.lf-save').addEventListener('click', async function () {
+      var msg = form.querySelector('.lf-msg');
+      var save = form.querySelector('.lf-save');
+      var url = (form.querySelector('.lf-url').value || '').trim();
+      var norma = (form.querySelector('.lf-norma').value || '').trim();
+      var acceso = form.querySelector('.lf-acceso').checked;
+      if (!/^https:\/\//i.test(url)) {
+        msg.textContent = 'El enlace debe empezar con https://'; return;
+      }
+      if (!driveFileIdFromUrl(url)) {
+        msg.textContent = 'No reconocí el identificador del archivo en ese enlace. ' +
+          'Usa «Compartir → Copiar vínculo» en Drive.';
+        return;
+      }
+      msg.textContent = '';
+      save.disabled = true;
+      save.textContent = 'Guardando…';
+      var res = await vincularInforme(form.getAttribute('data-id'), url,
+        normalizarNorma(norma), acceso);
+      if (res.ok) { renderMgmt(folio); return; }
+      save.disabled = false;
+      save.textContent = 'Guardar vínculo';
+      msg.textContent = 'No se pudo vincular: ' + res.reason;
+    });
+  });
+}
+
+// Formulario de vinculación de una revisión vigente con su informe en Drive.
+function linkFormHtml(x) {
+  return '<div class="link-form hidden" id="lf-' + escHtml(x.public_id) +
+      '" data-id="' + escHtml(x.public_id) + '">' +
+    '<input type="url" class="lf-url" placeholder="Enlace del informe en Drive (https://…)" ' +
+      'value="' + escHtml(x.drive_url || '') + '" />' +
+    '<input type="text" class="lf-norma" list="normasQr" ' +
+      'placeholder="Norma (ej. NOM-081-SEMARNAT-1994)" value="' + escHtml(x.norma || '') + '" />' +
+    '<label class="lf-check"><input type="checkbox" class="lf-acceso"' +
+      (x.acceso_informe_qr ? ' checked' : '') +
+      ' /><span>Mostrar «Ver informe» al escanear este QR</span></label>' +
+    '<div class="lf-hint mgmt-note"></div>' +
+    '<div class="lf-actions">' +
+      '<button class="btn-mini lf-save" type="button">Guardar vínculo</button>' +
+      '<button class="btn-mini ghost lf-cancel" type="button">Cancelar</button>' +
+    '</div>' +
+    '<div class="lf-msg mgmt-note"></div>' +
+  '</div>';
+}
+
+// Devuelve la norma con su escritura oficial cuando está habilitada, para que
+// el verificador público no muestre lo que se capturó a mano.
+function normalizarNorma(norma) {
+  var t = String(norma || '').trim();
+  var oficial = NORMAS_CON_ACCESO_QR.filter(function (n) {
+    return n.toUpperCase() === t.toUpperCase();
+  });
+  return oficial.length ? oficial[0] : t;
+}
+
+// El acceso público sólo se ofrece para las normas habilitadas en la
+// configuración. Vincular el archivo y exponerlo son decisiones separadas.
+function syncAccesoInforme(form) {
+  var norma = (form.querySelector('.lf-norma').value || '').trim().toUpperCase();
+  var chk = form.querySelector('.lf-acceso');
+  var habilitada = NORMAS_CON_ACCESO_QR.some(function (n) {
+    return n.toUpperCase() === norma;
+  });
+  chk.disabled = !habilitada;
+  if (!habilitada) chk.checked = false;
+  form.querySelector('.lf-hint').textContent = habilitada
+    ? 'Sólo lo verá quien escanee este QR, y únicamente mientras esta revisión siga vigente.'
+    : 'Esta norma no tiene acceso público habilitado: el vínculo se guarda, pero el QR no mostrará el informe.';
 }
 
 async function renderOperadores() {
@@ -1005,11 +1141,39 @@ async function actualizarOperador(userId, rol, activo) {
   } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
 }
 
+// Obtiene el ID del archivo desde el enlace que Drive entrega en
+// «Compartir → Copiar vínculo». La RPC exige ese ID además de la URL.
+function driveFileIdFromUrl(url) {
+  var u = String(url || '').trim();
+  var m = u.match(/\/d\/([A-Za-z0-9_-]{10,})/) ||
+          u.match(/[?&]id=([A-Za-z0-9_-]{10,})/) ||
+          u.match(/\/folders\/([A-Za-z0-9_-]{10,})/);
+  return m ? m[1] : '';
+}
+
+// Vincula el informe de Drive con la revisión exacta que identifica su QR.
+// La base rechaza cualquier revisión que ya no esté vigente.
+async function vincularInforme(publicId, driveUrl, norma, acceso) {
+  if (!supa || !authState.user) return { ok: false, reason: 'no-session' };
+  try {
+    var res = await supa.rpc('vincular_entrega_por_public_id', {
+      p_public_id: publicId,
+      p_drive_file_id: driveFileIdFromUrl(driveUrl),
+      p_drive_url: driveUrl,
+      p_norma: norma,
+      p_acceso_informe_qr: !!acceso
+    });
+    if (res.error) return { ok: false, reason: res.error.message };
+    return { ok: true, data: res.data };
+  } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
+}
+
 async function listarFolios(folio, estado) {
   if (!supa) return { ok: false, reason: 'no-config' };
   try {
     var q = supa.from('informes')
-      .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at,updated_at,operador_id')
+      .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,' +
+              'created_at,updated_at,operador_id,norma,drive_url,acceso_informe_qr,vinculado_at')
       .order('created_at', { ascending: false })
       .limit(200);
     if (folio) q = q.ilike('folio', '%' + folio + '%');
