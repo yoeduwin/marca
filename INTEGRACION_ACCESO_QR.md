@@ -13,7 +13,9 @@ Después de `supabase/folios_v2.sql`, ejecutar:
 supabase/acceso_documentos.sql
 ```
 
-La migración agrega a `informes` los campos de vínculo (`norma`, `drive_file_id`, `drive_url`, `acceso_informe_qr`, `vinculado_at`) y las RPC públicas controladas necesarias para verificar y vincular documentos.
+La migración agrega a `informes` los campos de vínculo (`norma`, `drive_file_id`, `drive_url`, `acceso_informe_qr`, `vinculado_at`) y las RPC públicas controladas necesarias para verificar y vincular documentos. También cierra la lectura anónima directa de `informes` que abría `folios_v2.sql`, por lo que siempre debe ejecutarse después de él.
+
+Para confirmar que quedó aplicada, ejecutar `supabase/diagnostico.sql`: es de sólo lectura y todas sus filas deben decir `OK`.
 
 ### Punto de unión entre MARCA y la PC fija
 
@@ -37,6 +39,8 @@ El rol `anon` deja de tener `SELECT` directo sobre `informes`. El verificador p�
 - `buscar_folio(folio)` — conserva la búsqueda manual y los QR históricos sin revelar UUIDs.
 - `verificar_archivo(sha256)` — conserva la comprobación de integridad sin revelar UUIDs.
 - `obtener_acceso_documento(public_id)` — devuelve el enlace sólo si se conoce el UUID exacto, la revisión está activa y `acceso_informe_qr = true`.
+
+Esa frontera es lo que sostiene el modelo: si `anon` recuperara el `SELECT` sobre `informes`, cualquiera podría obtener el `public_id` buscando el folio y, con él, el enlace de todo informe habilitado. El diagnóstico vigila esa condición.
 
 Además, `verificar.html` sólo solicita `obtener_acceso_documento(...)` cuando la navegación llegó mediante `?documento=<UUID>`. Buscar manualmente un folio no muestra el botón **Ver informe**.
 

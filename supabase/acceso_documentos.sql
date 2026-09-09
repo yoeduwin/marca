@@ -2,6 +2,25 @@
 -- Requiere haber aplicado previamente supabase/folios_v2.sql.
 -- Diseño genérico; la activación por norma se decide desde el sistema de envíos.
 
+-- Requisito previo: si Folios v2 no está aplicado, detener aquí con un mensaje
+-- claro en lugar de encadenar errores en el editor SQL de Supabase.
+do $$
+begin
+  if to_regclass('public.informes') is null
+     or to_regnamespace('private') is null
+     or to_regprocedure('private.es_operador()') is null
+     or not exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'informes'
+         and column_name = 'public_id'
+     ) then
+    raise exception
+      'Ejecuta primero supabase/folios_v2.sql: falta la base de Folios v2 (esquema private, función es_operador o columna public_id).'
+      using errcode = 'P0001';
+  end if;
+end $$;
+
 alter table public.informes
   add column if not exists norma text,
   add column if not exists drive_file_id text,
@@ -20,6 +39,11 @@ revoke select (
   public_id, folio, revision, sha256, num_paginas,
   fecha_emision, estado, created_at, updated_at
 ) on public.informes from anon;
+
+-- Con los privilegios revocados, la política de lectura pública de Folios v2
+-- queda sin efecto: se retira para que la tabla no conserve una regla anon
+-- que ya no describe cómo se consulta MARCA.
+drop policy if exists informes_lectura_publica on public.informes;
 
 -- Verificación pública de una revisión exacta. No devuelve public_id.
 create or replace function public.verificar_documento(p_public_id uuid)
@@ -253,3 +277,7 @@ $$;
 
 revoke execute on function public.obtener_acceso_documento(uuid) from public;
 grant execute on function public.obtener_acceso_documento(uuid) to anon, authenticated;
+
+-- Sin esta recarga, el frontend puede recibir "function not found" (PGRST202)
+-- hasta que PostgREST vuelva a leer el esquema.
+notify pgrst, 'reload schema';
