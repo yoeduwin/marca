@@ -30,15 +30,17 @@ está en [`INTEGRACION_ACCESO_QR.md`](INTEGRACION_ACCESO_QR.md).
 
 ## Actualización de Supabase
 
-El orden es obligatorio. Los scripts se ejecutan en el editor SQL del proyecto
-`ejecutiva-verificacion` y pueden repetirse sin dañar los datos:
+Los scripts se ejecutan en el editor SQL del proyecto `ejecutiva-verificacion`
+y pueden repetirse sin dañar los datos. El orden es obligatorio:
 
-1. `supabase/folios_v2.sql` — revisiones, roles y auditoría.
-2. `supabase/acceso_documentos.sql` — acceso al informe desde el QR y cierre de
+1. `supabase/diagnostico.sql` — no modifica nada. Funciona en cualquier estado
+   y su primera fila, «¿Qué sigue?», dice qué falta ejecutar.
+2. `supabase/folios_v2.sql` — revisiones, roles y auditoría.
+3. `supabase/acceso_documentos.sql` — acceso al informe desde el QR y cierre de
    la lectura pública directa de `informes`.
-3. `supabase/diagnostico.sql` — no modifica nada; cada fila debe decir `OK`.
-4. Confirmar que no existan errores de seguridad en Supabase Advisors.
-5. Publicar `index.html` y `verificar.html`.
+4. `supabase/diagnostico.sql` otra vez — ahora cada fila debe decir `OK` o `INFO`.
+5. Confirmar que no existan errores de seguridad en Supabase Advisors.
+6. Publicar `index.html` y `verificar.html`.
 
 `acceso_documentos.sql` siempre va después: `folios_v2.sql` abre la lectura
 anónima de `informes` y `acceso_documentos.sql` la cierra. Si en el futuro
