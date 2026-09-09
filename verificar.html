@@ -133,6 +133,10 @@
     var resultEl = document.getElementById('result');
     var fileResultEl = document.getElementById('fileResult');
     var folioInput = document.getElementById('folioInput');
+    // Contexto de una revisión exacta cuando la página se abrió desde el QR.
+    // Se conserva durante la verificación opcional del archivo para no degradar
+    // el acceso a una búsqueda por folio.
+    var exactDocumentContext = null;
 
     function esc(s) {
       return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) {
@@ -250,7 +254,13 @@
         if (res.error) throw res.error;
         var rows = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
         var r = rows[0];
-        if (!r) { showNotFound('identificador desconocido'); return; }
+        if (!r) { exactDocumentContext = null; showNotFound('identificador desconocido'); return; }
+        exactDocumentContext = {
+          publicId: publicId,
+          folio: r.folio,
+          revision: r.revision,
+          estado: r.estado
+        };
         folioInput.value = r.folio;
         if (r.estado === 'activo') showAuthentic([r], publicId);
         else if (r.estado === 'anulado') showAnulado(r.folio);
@@ -306,7 +316,20 @@
           } else {
             fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Versión anterior (corregida)</h3><p>Este archivo pertenece al folio <b>' + esc(r.folio) + '</b> pero es una <b>versión que fue reemplazada</b>. Solicita el documento vigente al emisor.</p></div></div>';
           }
-          searchByFolio(r.folio);
+          if (exactDocumentContext) {
+            var sameExactDocument =
+              String(exactDocumentContext.folio || '').trim().toUpperCase() === String(r.folio || '').trim().toUpperCase() &&
+              Number(exactDocumentContext.revision == null ? 0 : exactDocumentContext.revision) === Number(r.revision == null ? 0 : r.revision);
+
+            if (sameExactDocument && r.estado === 'activo' && exactDocumentContext.estado === 'activo') {
+              // Conserva el contexto exacto del QR y, por tanto, el botón Ver informe.
+              showAuthentic([r], exactDocumentContext.publicId);
+            }
+            // Si el archivo cargado corresponde a otra revisión/folio, el resultado
+            // superior continúa referido al QR original y no se expone otro acceso.
+          } else {
+            searchByFolio(r.folio);
+          }
         } else {
           fileResultEl.innerHTML = '<div class="status bad" style="margin-top:14px"><div class="icon">!</div><div><h3>Archivo no registrado</h3><p>No encontramos ningún informe con esta huella. El documento no consta como emitido por Ejecutiva Ambiental (o fue modificado tras su emisión).</p><p class="mono" style="margin-top:8px">Huella: ' + hash + '</p></div></div>';
         }
@@ -315,8 +338,16 @@
       }
     }
 
-    document.getElementById('btnSearch').addEventListener('click', function () { searchByFolio(folioInput.value); });
-    folioInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') searchByFolio(folioInput.value); });
+    document.getElementById('btnSearch').addEventListener('click', function () {
+      exactDocumentContext = null;
+      searchByFolio(folioInput.value);
+    });
+    folioInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        exactDocumentContext = null;
+        searchByFolio(folioInput.value);
+      }
+    });
 
     var drop = document.getElementById('drop');
     var fileInput = document.getElementById('fileInput');
