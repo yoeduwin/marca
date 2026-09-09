@@ -66,7 +66,11 @@ estado_migraciones as (
       when to_regclass('public.informes') is null then false
       else has_table_privilege('anon', 'public.informes', 'select')
         or has_any_column_privilege('anon', 'public.informes', 'select')
-    end as anon_lee_tabla
+    end as anon_lee_tabla,
+    exists (
+      select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'informes' and 'anon' = any(roles)
+    ) as politica_anon_restante
 ),
 
 verificaciones as (
@@ -74,7 +78,8 @@ verificaciones as (
   -- 0. Qué hacer -----------------------------------------------------------
   select 1 as orden,
          '¿Qué sigue?' as verificacion,
-         case when hay_tabla and hay_folios_v2 and hay_acceso and not anon_lee_tabla
+         case when hay_tabla and hay_folios_v2 and hay_acceso
+                   and not anon_lee_tabla and not politica_anon_restante
               then 'LISTO' else 'ACCIÓN' end as estado,
          case
            when not hay_tabla
@@ -85,7 +90,9 @@ verificaciones as (
              then 'Ejecuta supabase/acceso_documentos.sql.'
            when anon_lee_tabla
              then 'Vuelve a ejecutar supabase/acceso_documentos.sql para cerrar la lectura pública de informes.'
-           else 'Nada pendiente en la base. Publica index.html y verificar.html.'
+           when politica_anon_restante
+             then 'Vuelve a ejecutar supabase/acceso_documentos.sql: queda la política anon heredada de Folios v2 (ver fila 65).'
+           else 'Nada pendiente en la base. Revisa que index.html y verificar.html estén publicados.'
          end as detalle
   from estado_migraciones
 
