@@ -185,6 +185,11 @@ begin
 end;
 $$;
 
+revoke execute on function private.vincular_entrega_por_public_id(uuid, text, text, text, boolean)
+  from public, anon;
+grant execute on function private.vincular_entrega_por_public_id(uuid, text, text, text, boolean)
+  to authenticated;
+
 create or replace function public.vincular_entrega_por_public_id(
   p_public_id uuid,
   p_drive_file_id text,
@@ -217,6 +222,9 @@ do $$
 begin
   if to_regprocedure('public.vincular_entrega_por_folio(text,text,text,text,boolean)') is not null then
     execute 'revoke execute on function public.vincular_entrega_por_folio(text,text,text,text,boolean) from public, anon, authenticated';
+  end if;
+  if to_regprocedure('private.vincular_entrega_por_folio(text,text,text,text,boolean)') is not null then
+    execute 'revoke execute on function private.vincular_entrega_por_folio(text,text,text,text,boolean) from public, anon, authenticated';
   end if;
 end $$;
 
