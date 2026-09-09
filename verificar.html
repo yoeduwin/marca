@@ -172,7 +172,7 @@
       }
     }
 
-    function showAuthentic(rows) {
+    function showAuthentic(rows, exactPublicId) {
       var r = rows[0];
       var extra = rows.length > 1
         ? '<div class="detail-row"><span class="k">Archivos registrados</span><span class="v">' + rows.length + '</span></div>'
@@ -189,9 +189,9 @@
           '<div class="detail-row"><span class="k">Estado</span><span class="v">Activo</span></div>' +
           extra +
         '</div>' +
-        '<div id="documentAccess"></div>' +
+        (exactPublicId ? '<div id="documentAccess"></div>' : '') +
         '<p class="hint" style="margin-top:14px">Para máxima certeza, arrastra abajo el PDF que recibiste y confirmaremos que no fue alterado.</p>';
-      loadDocumentAccess(r.public_id);
+      if (exactPublicId) loadDocumentAccess(exactPublicId);
     }
 
     function showSuperseded(folio, revision) {
@@ -246,15 +246,13 @@
       if (!supa) { showError('Servicio de verificación no disponible.'); return; }
       showWait('Consultando la revisión exacta del documento…');
       try {
-        var res = await supa.from('informes')
-          .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at')
-          .eq('public_id', publicId)
-          .maybeSingle();
+        var res = await supa.rpc('verificar_documento', { p_public_id: publicId });
         if (res.error) throw res.error;
-        var r = res.data;
+        var rows = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
+        var r = rows[0];
         if (!r) { showNotFound('identificador desconocido'); return; }
         folioInput.value = r.folio;
-        if (r.estado === 'activo') showAuthentic([r]);
+        if (r.estado === 'activo') showAuthentic([r], publicId);
         else if (r.estado === 'anulado') showAnulado(r.folio);
         else showSuperseded(r.folio, r.revision);
       } catch (e) { showError(e.message || 'Error de conexión.'); }
@@ -266,15 +264,12 @@
       if (!supa) { showError('Servicio de verificación no disponible.'); return; }
       showWait('Buscando el folio ' + folio + '…');
       try {
-        var res = await supa.from('informes')
-          .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at')
-          .eq('folio', folio)
-          .order('created_at', { ascending: false });
+        var res = await supa.rpc('buscar_folio', { p_folio: folio });
         if (res.error) throw res.error;
-        var rows = res.data || [];
+        var rows = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
         if (legacyQr && rows.length > 1) { showLegacyAmbiguous(folio, rows); return; }
         var activas = rows.filter(function (x) { return x.estado === 'activo'; });
-        if (activas.length) showAuthentic(activas);
+        if (activas.length) showAuthentic(activas, null);
         else if (rows.some(function (x) { return x.estado === 'anulado'; })) showAnulado(folio);
         else if (rows.length) showSuperseded(folio, rows[0].revision);
         else showNotFound(folio);
@@ -297,14 +292,12 @@
         var buf = await file.arrayBuffer();
         var hash = await sha256Hex(buf);
         if (!supa) { showError('Servicio no disponible.'); return; }
-        var res = await supa.from('informes')
-          .select('public_id,folio,revision,sha256,num_paginas,fecha_emision,estado,created_at')
-          .eq('sha256', hash)
-          .order('created_at', { ascending: false }).limit(1);
+        var res = await supa.rpc('verificar_archivo', { p_sha256: hash });
         if (res.error) throw res.error;
+        var rows = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
 
-        if (res.data && res.data.length) {
-          var r = res.data[0];
+        if (rows.length) {
+          var r = rows[0];
           folioInput.value = r.folio;
           if (r.estado === 'activo') {
             fileResultEl.innerHTML = '<div class="status ok" style="margin-top:14px"><div class="icon">✓</div><div><h3>Archivo auténtico e íntegro</h3><p>Coincide exactamente con <b>' + esc(r.folio) + ' R' + String(r.revision == null ? 0 : r.revision).padStart(2, '0') + '</b> registrado por Ejecutiva Ambiental. No fue alterado.</p></div></div>';
