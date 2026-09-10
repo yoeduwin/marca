@@ -229,7 +229,9 @@
         : 'la revisión vigente';
       resultEl.innerHTML =
         '<div class="status wait"><div class="icon">i</div>' +
-        '<div><h3>QR histórico: verifica el archivo</h3>' +
+        '<div><h3>' + (MOSTRAR_VERIFICACION_ARCHIVO
+          ? 'QR histórico: verifica el archivo'
+          : 'QR histórico: confirma con el emisor') + '</h3>' +
         '<p>Este QR identifica el folio <b>' + esc(folio) + '</b>, pero no una revisión concreta. ' +
         'El folio tiene ' + rows.length + ' versiones registradas y la vigente es <b>' + esc(rev) + '</b>. ' +
         (MOSTRAR_VERIFICACION_ARCHIVO
