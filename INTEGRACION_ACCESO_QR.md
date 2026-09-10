@@ -30,6 +30,13 @@ Hay dos caminos hacia la misma función, y ambos exigen sesión de operador:
 No se puede vincular desde el editor SQL de Supabase: ahí no hay usuario
 autenticado y la función rechaza la llamada.
 
+El enlace sólo puede apuntar a `drive.google.com` o `docs.google.com`, por
+https. El botón **Ver informe** se muestra a nombre de Ejecutiva Ambiental, así
+que un enlace mal pegado convertiría la página de verificación en un
+redirector a un sitio ajeno. La restricción vive en la RPC, no sólo en el
+panel: es el único camino de escritura, y así ningún cliente futuro puede
+saltársela.
+
 ### Punto de unión entre MARCA y la PC fija
 
 No se usa el folio ni el SHA-256 como llave operativa. El `public_id` exacto de cada revisión ya está codificado dentro del QR que MARCA inserta en el PDF:

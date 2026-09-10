@@ -30,7 +30,8 @@ informe**. Buscar el folio a mano nunca muestra ese botón.
 La vinculación se hace desde el panel de folios: el botón **Vincular informe**
 de cada revisión vigente pide el enlace de Drive y la norma, y deja el acceso
 público en una casilla aparte. Sólo las normas listadas en
-`NORMAS_CON_ACCESO_QR` (en `index.html`) pueden habilitarlo. El detalle del
+`NORMAS_CON_ACCESO_QR` (en `index.html`) pueden habilitarlo, y el enlace sólo
+puede apuntar a Google Drive. El detalle del
 flujo está en [`INTEGRACION_ACCESO_QR.md`](INTEGRACION_ACCESO_QR.md).
 
 ## Actualización de Supabase

@@ -727,6 +727,10 @@ var VERIFY_BASE_URL = 'https://yoeduwin.github.io/marca/verificar.html';
 // aquí la habilita: no requiere tocar la base de datos ni el QR del PDF.
 var NORMAS_CON_ACCESO_QR = ['NOM-081-SEMARNAT-1994'];
 
+// Dominios aceptados para el informe. El botón «Ver informe» aparece con la
+// marca de Ejecutiva Ambiental, así que no puede llevar a un sitio ajeno.
+var HOSTS_INFORME_PERMITIDOS = ['drive.google.com', 'docs.google.com'];
+
 var supa = null;
 try {
   if (window.supabase && SUPABASE_URL.indexOf('http') === 0) {
@@ -935,6 +939,12 @@ async function renderMgmt(folio) {
       if (!/^https:\/\//i.test(url)) {
         msg.textContent = 'El enlace debe empezar con https://'; return;
       }
+      if (!hostInformePermitido(url)) {
+        msg.textContent = 'El enlace debe ser de Google Drive (' +
+          HOSTS_INFORME_PERMITIDOS.join(' o ') + '). ' +
+          'El botón Ver informe se muestra a nombre de Ejecutiva Ambiental.';
+        return;
+      }
       if (!driveFileIdFromUrl(url)) {
         msg.textContent = 'No reconocí el identificador del archivo en ese enlace. ' +
           'Usa «Compartir → Copiar vínculo» en Drive.';
@@ -1139,6 +1149,17 @@ async function actualizarOperador(userId, rol, activo) {
     if (res.error) return { ok: false, reason: res.error.message };
     return { ok: true, data: res.data };
   } catch (e) { return { ok: false, reason: (e && e.message) || 'error' }; }
+}
+
+// Acepta el enlace sólo si apunta a un dominio de Drive por https. Se resuelve
+// con el analizador de URL del navegador para que no lo engañen formas como
+// https://drive.google.com@otro-sitio o https://drive.google.com.otro-sitio.
+function hostInformePermitido(url) {
+  try {
+    var u = new URL(String(url || '').trim());
+    return u.protocol === 'https:' &&
+      HOSTS_INFORME_PERMITIDOS.indexOf(u.hostname.toLowerCase()) !== -1;
+  } catch (e) { return false; }
 }
 
 // Obtiene el ID del archivo desde el enlace que Drive entrega en

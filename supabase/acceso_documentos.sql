@@ -156,6 +156,14 @@ begin
   if v_url = '' or v_url !~ '^https://' then
     raise exception 'La URL del informe no es válida' using errcode = '22023';
   end if;
+  -- El enlace se publica como «Ver informe» a nombre de Ejecutiva Ambiental:
+  -- se limita a Drive para que no pueda llevar a un sitio ajeno. El ancla y el
+  -- '/' final impiden formas como https://drive.google.com@otro-sitio o
+  -- https://drive.google.com.otro-sitio.
+  if v_url !~* '^https://(drive|docs)\.google\.com(/|$)' then
+    raise exception 'El informe debe estar en Google Drive (drive.google.com o docs.google.com)'
+      using errcode = '22023';
+  end if;
 
   select *
     into v_informe
