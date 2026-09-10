@@ -17,6 +17,26 @@ La migración agrega a `informes` los campos de vínculo (`norma`, `drive_file_i
 
 Para confirmar que quedó aplicada, ejecutar `supabase/diagnostico.sql`: es de sólo lectura y todas sus filas deben decir `OK`.
 
+### Quién vincula
+
+Hay dos caminos hacia la misma función, y ambos exigen sesión de operador:
+
+- **El panel de folios de MARCA.** Cada revisión vigente tiene el botón
+  **Vincular informe**: se pega el enlace de Drive, se elige la norma y se
+  decide si el QR muestra el informe. Es el camino disponible hoy.
+- **La PC fija**, cuando exista, para hacerlo automáticamente al momento de la
+  entrega.
+
+No se puede vincular desde el editor SQL de Supabase: ahí no hay usuario
+autenticado y la función rechaza la llamada.
+
+El enlace sólo puede apuntar a `drive.google.com` o `docs.google.com`, por
+https. El botón **Ver informe** se muestra a nombre de Ejecutiva Ambiental, así
+que un enlace mal pegado convertiría la página de verificación en un
+redirector a un sitio ajeno. La restricción vive en la RPC, no sólo en el
+panel: es el único camino de escritura, y así ningún cliente futuro puede
+saltársela.
+
 ### Punto de unión entre MARCA y la PC fija
 
 No se usa el folio ni el SHA-256 como llave operativa. El `public_id` exacto de cada revisión ya está codificado dentro del QR que MARCA inserta en el PDF:
@@ -49,9 +69,13 @@ Además, `verificar.html` sólo solicita `obtener_acceso_documento(...)` cuando 
 ```text
 MARCA -> registra revisión -> genera PDF con QR(public_id)
                                    |
-                                   v
-PC fija -> lee QR del PDF -> extrae public_id -> sube a Drive
-                                   |
+              +--------------------+--------------------+
+              |                                         |
+              v                                         v
+  Panel de folios de MARCA                PC fija -> lee QR del PDF
+  (operador pega el enlace)               -> extrae public_id -> sube a Drive
+              |                                         |
+              +--------------------+--------------------+
                                    v
                     vincular_entrega_por_public_id
                                    |
@@ -61,10 +85,10 @@ QR -> verificar.html -> obtener_acceso_documento(public_id) -> Ver informe
 
 ## Activación por norma
 
-La base y el frontend son genéricos. La aplicación de envíos decide qué normas habilitan `acceso_informe_qr`.
+La base es genérica: guarda cualquier norma. Quien vincula decide cuáles habilitan `acceso_informe_qr`.
 
-La primera implementación habilita únicamente:
+En el panel de MARCA esa decisión vive en `NORMAS_CON_ACCESO_QR`, junto a `VERIFY_BASE_URL` en `index.html`. Hoy contiene únicamente:
 
 - `NOM-081-SEMARNAT-1994`
 
-Agregar otra norma en el futuro no requiere cambiar el QR ni la estructura de la base; basta con habilitarla en la configuración de la aplicación de envíos.
+Con cualquier otra norma el panel guarda el vínculo pero deja bloqueada la casilla de acceso público. Agregar una norma es añadirla a esa lista: no cambia el QR ni la estructura de la base.
