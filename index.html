@@ -136,6 +136,9 @@
       text-transform: uppercase; letter-spacing: 0.04em;
     }
     .field-row { margin-bottom: 11px; }
+    .field-row > small { display: block; font-size: 0.73rem; color: #777; margin-top: 4px; }
+    /* La fecha que quedará impresa, en texto, por encima de la nota explicativa. */
+    #fechaEmisionLarga { color: #005600; font-weight: 600; }
     .field-row > label {
       display: block; color: #333; font-weight: 600;
       margin-bottom: 5px; font-size: 0.83rem;
@@ -488,6 +491,15 @@
       <div id="rowReportNumber" class="field-row">
         <label for="reportNumber">Número de informe</label>
         <input type="text" id="reportNumber" placeholder="Ej: EA2601-036-0012" autocomplete="off" />
+      </div>
+
+      <div id="rowFechaEmision" class="field-row">
+        <label for="fechaEmision">Fecha de emisión del informe</label>
+        <input type="date" id="fechaEmision" />
+        <small id="fechaEmisionLarga"></small>
+        <small>La fecha que lleva el informe, que no siempre es la de hoy: un informe
+        emitido el 10 puede entregarse el 25 tras la validación del cliente. El pie del
+        certificado conserva aparte la fecha en que se generó el archivo.</small>
       </div>
 
       <div id="rowCertificate">
@@ -1123,7 +1135,8 @@ async function registerInforme(row) {
       p_public_id: row.public_id,
       p_folio: row.folio,
       p_sha256: row.sha256,
-      p_num_paginas: row.num_paginas
+      p_num_paginas: row.num_paginas,
+      p_fecha_emision: row.fecha_emision || null
     });
     if (res.error) return { ok: false, reason: res.error.message };
     return Object.assign({ ok: true }, res.data || {});
@@ -1215,6 +1228,7 @@ var state = {
   aplanarQuality: 'alta',
   // Basic config
   reportNumber: '',
+  fechaEmision: '',   // se inicializa con la fecha de hoy al arrancar
   includeCertificate: true,
   applyWatermark: true,
   applyPagination: true,
@@ -1308,6 +1322,9 @@ function renderConfigPanel() {
   // Report number: in final always; in preliminar if pagination enabled or predefined text
   setVisible('rowReportNumber',
     isFinal || state.applyPagination || state.textOption === 'predefined');
+
+  // La fecha de emisión sólo se imprime en el certificado.
+  setVisible('rowFechaEmision', isFinal && state.includeCertificate);
 
   // Certificate only in final
   setVisible('rowCertificate', isFinal);
@@ -1418,6 +1435,16 @@ function validateConfig() {
   if (needsReport && !state.reportNumber.trim()) {
     errors.push('Por favor ingresa el número de informe.');
   }
+  if (state.mode === 'final' && state.includeCertificate) {
+    var f = (state.fechaEmision || '').trim();
+    if (!f) {
+      errors.push('Indica la fecha de emisión del informe.');
+    } else if (!fechaLarga(f)) {
+      errors.push('La fecha de emisión no es una fecha válida.');
+    } else if (f > hoyISO()) {
+      errors.push('La fecha de emisión no puede ser posterior a hoy.');
+    }
+  }
   if (state.mode === 'final' && state.includeCertificate && state.selectedFiles.length > 1) {
     errors.push('Para informes verificables procesa un PDF por vez: cada archivo necesita su propio folio y QR.');
   }
@@ -1481,6 +1508,7 @@ function buildOptionsFromUI() {
     mode: state.mode,
     textOption: state.textOption,
     reportNumber: state.reportNumber,
+    fechaEmision: state.fechaEmision,
     text1: text1,
     text2: text2,
     density: state.density,
@@ -1509,6 +1537,7 @@ function goToStep(n) {
 // =========================================================================
 function syncFromForm() {
   state.reportNumber = document.getElementById('reportNumber').value;
+  state.fechaEmision = document.getElementById('fechaEmision').value;
   state.includeCertificate = document.getElementById('includeCertificate').checked;
   state.applyWatermark = document.getElementById('applyWatermark').checked;
   state.applyPagination = document.getElementById('applyPagination').checked;
@@ -1526,6 +1555,8 @@ function syncFromForm() {
 
 function syncToForm() {
   document.getElementById('reportNumber').value = state.reportNumber;
+  document.getElementById('fechaEmision').value = state.fechaEmision;
+  renderFechaEmisionLarga();
   document.getElementById('includeCertificate').checked = state.includeCertificate;
   document.getElementById('applyWatermark').checked = state.applyWatermark;
   document.getElementById('applyPagination').checked = state.applyPagination;
@@ -1546,6 +1577,40 @@ function syncToForm() {
 // =========================================================================
 // UTILITIES
 // =========================================================================
+// Confirma en texto la fecha que se imprimirá: el selector del navegador la
+// dibuja como 10/12 o 12/10 según su idioma, y esa ambigüedad es justo la que
+// puede acabar en una fecha equivocada dentro del certificado.
+function renderFechaEmisionLarga() {
+  var el = document.getElementById('fechaEmisionLarga');
+  if (!el) return;
+  var valor = document.getElementById('fechaEmision').value;
+  var larga = fechaLarga(valor);
+  if (!valor) { el.textContent = 'Indica la fecha que lleva el informe.'; return; }
+  if (!larga) { el.textContent = 'Fecha no válida.'; return; }
+  el.textContent = valor > hoyISO()
+    ? 'Se imprimiría «' + larga + '», que aún no ha ocurrido.'
+    : 'Se imprimirá «' + larga + '».';
+}
+
+// Fecha de hoy en el huso del navegador, en formato YYYY-MM-DD.
+function hoyISO() {
+  var d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+// Formatea YYYY-MM-DD como fecha larga. Se construye la fecha por partes
+// porque new Date('2025-12-10') se interpreta en UTC y en México mostraría
+// el día anterior.
+function fechaLarga(iso) {
+  var p = String(iso || '').split('-');
+  if (p.length !== 3) return '';
+  var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
 function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -1705,6 +1770,7 @@ async function flattenPDF(pdfBytes, opts) {
 async function buildCertificationPage(certPage, pdfDoc, opts) {
   var font = opts.font, fontBold = opts.fontBold,
       reportNumber = opts.reportNumber, totalPages = opts.totalPages,
+      fechaEmision = opts.fechaEmision,
       verificationId = opts.verificationId;
   var sz = certPage.getSize();
   var W = sz.width, H = sz.height;
@@ -1736,8 +1802,12 @@ async function buildCertificationPage(certPage, pdfDoc, opts) {
     return lines;
   }
 
+  // Dos fechas distintas y ambas ciertas: la que lleva el informe y el día en
+  // que se produjo este archivo. Sólo coinciden cuando se emite y se entrega
+  // el mismo día.
   var today = new Date();
   var dateStr = today.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+  var emisionStr = fechaLarga(fechaEmision) || dateStr;
 
   // ================= MARCO =================
   certPage.drawRectangle({ x: 26, y: 26, width: W - 52, height: H - 52, borderColor: green, borderWidth: 2.5 });
@@ -1779,7 +1849,7 @@ async function buildCertificationPage(certPage, pdfDoc, opts) {
   certPage.drawLine({ start: { x: pX + 20, y: pTop - 60 }, end: { x: pX + pW - 20, y: pTop - 60 }, thickness: 0.6, color: line });
 
   certPage.drawText('FECHA DE EMISION', { x: pX + 20, y: pTop - 76, size: 7.5, font: fontBold, color: gold });
-  certPage.drawText(dateStr, { x: pX + 20, y: pTop - 92, size: 10, font: font, color: ink });
+  certPage.drawText(emisionStr, { x: pX + 20, y: pTop - 92, size: 10, font: font, color: ink });
   certPage.drawText('TOTAL DE PAGINAS', { x: pX + 250, y: pTop - 76, size: 7.5, font: fontBold, color: gold });
   certPage.drawText(String(totalPages), { x: pX + 250, y: pTop - 92, size: 10, font: font, color: ink });
 
@@ -1895,7 +1965,7 @@ async function processSinglePDF(file, opts) {
       baseOpacity = opts.baseOpacity, config = opts.config,
       shouldFlatten = opts.shouldFlatten, flatScale = opts.flatScale, flatQuality = opts.flatQuality,
       enableWatermark = opts.enableWatermark, enablePagination = opts.enablePagination,
-      includeCertificate = opts.includeCertificate;
+      includeCertificate = opts.includeCertificate, fechaEmision = opts.fechaEmision;
   // Cada PDF certificable recibe un identificador inmutable. El folio puede
   // repetirse en una corrección, pero el QR de cada revisión siempre es distinto.
   var verificationId = (mode === 'final' && includeCertificate)
@@ -1948,7 +2018,8 @@ async function processSinglePDF(file, opts) {
     var certPage = pdfDoc.insertPage(1, PDFLib.PageSizes.Letter);
     await buildCertificationPage(certPage, pdfDoc, {
       font: font, fontBold: fontBold, reportNumber: reportNumber,
-      totalPages: totalPages, verificationId: verificationId
+      totalPages: totalPages, verificationId: verificationId,
+      fechaEmision: fechaEmision
     });
     if (enableWatermark) {
       applyWatermark(certPage, Object.assign({}, wmBase, { layerMode: '3layer', multiLayer: false }));
@@ -2006,6 +2077,7 @@ async function processSinglePDF(file, opts) {
     verifiable: includeCert,
     publicId: verificationId,
     folio: reportNumber || '',
+    fechaEmision: fechaEmision || '',
     numPaginas: finalPdfDoc.getPageCount(),
     sha256: sha256
   };
@@ -2051,7 +2123,8 @@ async function processFiles() {
         document.getElementById('processingNote').textContent = 'Registrando folio ' + res.folio + '...';
         var reg = await registerInforme({
           public_id: res.publicId, folio: res.folio,
-          sha256: res.sha256, num_paginas: res.numPaginas
+          sha256: res.sha256, num_paginas: res.numPaginas,
+          fecha_emision: res.fechaEmision
         });
         res.regStatus = reg.ok
           ? { type: 'ok', msg: reg.replaced
@@ -2100,6 +2173,11 @@ function clearResults() {
 // EVENT LISTENERS
 // =========================================================================
 function bindEvents() {
+
+  document.getElementById('fechaEmision').addEventListener('input', function () {
+    state.fechaEmision = this.value;
+    renderFechaEmisionLarga();
+  });
 
   // Step 1: mode cards
   document.getElementById('cardFinal').addEventListener('click', function() {
@@ -2198,6 +2276,9 @@ function bindEvents() {
 // =========================================================================
 // INIT
 // =========================================================================
+// La fecha de emisión arranca en hoy, que es el caso más común; se cambia
+// cuando el informe se entrega días después de emitido.
+state.fechaEmision = hoyISO();
 syncToForm();
 bindEvents();
 renderUI();

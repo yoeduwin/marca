@@ -4,7 +4,7 @@ Aplicación web de Ejecutiva Ambiental para proteger PDF, emitir certificados y 
 
 ## Folios y revisiones
 
-El folio se captura manualmente porque proviene del sistema operativo de la empresa. Cada emisión recibe además:
+El folio y la fecha de emisión se capturan a mano: el folio proviene del sistema operativo de la empresa, y la fecha es la del informe, que no siempre es el día en que se genera el archivo —un informe emitido el 10 puede entregarse el 25, después de que el cliente lo valida—. El certificado imprime esa fecha y conserva aparte, en su pie, el día real de generación; la base guarda además `created_at`, el sello inmutable de cuándo se registró. Cada emisión recibe además:
 
 - un identificador público único para su QR;
 - una revisión automática `R00`, `R01`, etc.;
@@ -44,9 +44,10 @@ y pueden repetirse sin dañar los datos. El orden es obligatorio:
 2. `supabase/folios_v2.sql` — revisiones, roles y auditoría.
 3. `supabase/acceso_documentos.sql` — acceso al informe desde el QR y cierre de
    la lectura pública directa de `informes`.
-4. `supabase/diagnostico.sql` otra vez — ahora cada fila debe decir `OK` o `INFO`.
-5. Confirmar que no existan errores de seguridad en Supabase Advisors.
-6. Publicar `index.html` y `verificar.html`.
+4. `supabase/fecha_emision.sql` — fecha de emisión capturable al registrar.
+5. `supabase/diagnostico.sql` otra vez — ahora cada fila debe decir `OK` o `INFO`.
+6. Confirmar que no existan errores de seguridad en Supabase Advisors.
+7. Publicar `index.html` y `verificar.html`.
 
 `acceso_documentos.sql` siempre va después: `folios_v2.sql` abre la lectura
 anónima de `informes` y `acceso_documentos.sql` la cierra. Si en el futuro
