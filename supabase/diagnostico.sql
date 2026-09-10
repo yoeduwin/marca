@@ -76,7 +76,9 @@ estado_migraciones as (
       and pg_get_functiondef(
             to_regprocedure('private.vincular_entrega_por_public_id(uuid,text,text,text,boolean)')::oid
           ) like '%(drive|docs)%',
-      false) as enlace_restringido
+      false) as enlace_restringido,
+    to_regprocedure('public.registrar_revision(uuid,text,text,integer,date)') is not null
+      as hay_fecha_emision
 ),
 
 verificaciones as (
@@ -86,7 +88,7 @@ verificaciones as (
          '¿Qué sigue?' as verificacion,
          case when hay_tabla and hay_folios_v2 and hay_acceso
                    and not anon_lee_tabla and not politica_anon_restante
-                   and enlace_restringido
+                   and enlace_restringido and hay_fecha_emision
               then 'LISTO' else 'ACCIÓN' end as estado,
          case
            when not hay_tabla
@@ -101,6 +103,8 @@ verificaciones as (
              then 'Vuelve a ejecutar supabase/acceso_documentos.sql: queda la política anon heredada de Folios v2 (ver fila 65).'
            when not enlace_restringido
              then 'Vuelve a ejecutar supabase/acceso_documentos.sql: la vinculación todavía acepta enlaces fuera de Drive (ver fila 25).'
+           when not hay_fecha_emision
+             then 'Ejecuta supabase/fecha_emision.sql para poder capturar la fecha del informe (ver fila 27).'
            else 'Nada pendiente en la base. Revisa que index.html y verificar.html estén publicados.'
          end as detalle
   from estado_migraciones
@@ -132,6 +136,15 @@ verificaciones as (
          case when enlace_restringido
               then 'la vinculación sólo acepta drive.google.com y docs.google.com'
               else 'la vinculación acepta cualquier https — vuelve a ejecutar acceso_documentos.sql' end
+  from estado_migraciones
+
+  union all
+  select 27,
+         'Fecha de emisión capturable',
+         case when hay_fecha_emision then 'OK' else 'FALTA' end,
+         case when hay_fecha_emision
+              then 'el informe puede registrarse con su propia fecha'
+              else 'la fecha siempre será la del día del registro — falta fecha_emision.sql' end
   from estado_migraciones
 
   union all
