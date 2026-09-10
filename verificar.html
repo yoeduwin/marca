@@ -104,7 +104,7 @@
           <button class="btn" id="btnSearch" type="button">Verificar</button>
         </div>
         <div class="result" id="result"></div>
-        <div class="filecheck">
+        <div class="filecheck" id="filecheck">
           <div class="label">Verificación del archivo (opcional)</div>
           <div class="drop" id="drop">
             Arrastra aquí el <b>PDF</b> que recibiste o <b>haz clic para elegirlo</b>.
@@ -125,6 +125,11 @@
   <script>
     var SUPABASE_URL = 'https://zwllvbmiyzblahtxizbk.supabase.co';
     var SUPABASE_KEY = 'sb_publishable_eMm-wi8-v4zx0LEa3rzlSw_KAnWXca8';
+
+    // Verificación del archivo por huella SHA-256. En false se oculta el
+    // recuadro y los mensajes dejan de ofrecerla. Es la única comprobación
+    // concluyente para un QR histórico, que sólo identifica el folio.
+    var MOSTRAR_VERIFICACION_ARCHIVO = false;
 
     var supa = null;
     try { supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
@@ -194,7 +199,9 @@
           extra +
         '</div>' +
         (exactPublicId ? '<div id="documentAccess"></div>' : '') +
-        '<p class="hint" style="margin-top:14px">Para máxima certeza, arrastra abajo el PDF que recibiste y confirmaremos que no fue alterado.</p>';
+        (MOSTRAR_VERIFICACION_ARCHIVO
+          ? '<p class="hint" style="margin-top:14px">Para máxima certeza, arrastra abajo el PDF que recibiste y confirmaremos que no fue alterado.</p>'
+          : '');
       if (exactPublicId) loadDocumentAccess(exactPublicId);
     }
 
@@ -225,7 +232,10 @@
         '<div><h3>QR histórico: verifica el archivo</h3>' +
         '<p>Este QR identifica el folio <b>' + esc(folio) + '</b>, pero no una revisión concreta. ' +
         'El folio tiene ' + rows.length + ' versiones registradas y la vigente es <b>' + esc(rev) + '</b>. ' +
-        'Para saber si el documento que recibiste sigue vigente, sube el PDF en el recuadro inferior.</p></div></div>';
+        (MOSTRAR_VERIFICACION_ARCHIVO
+          ? 'Para saber si el documento que recibiste sigue vigente, sube el PDF en el recuadro inferior.'
+          : 'Para saber si el documento que recibiste sigue vigente, comunícate al 222 941 7295.') +
+        '</p></div></div>';
     }
 
     function showNotFound(folio) {
@@ -235,7 +245,9 @@
         '<p>No encontramos el folio <b>' + esc(folio) + '</b> en el registro de Ejecutiva Ambiental. ' +
         'Puede tratarse de un error de captura, un documento no oficial, o una alteración. ' +
         'Si tienes dudas, comunícate al 222 941 7295.</p></div></div>' +
-        '<p class="hint" style="margin-top:14px">También puedes arrastrar el PDF abajo para buscarlo por su huella digital.</p>';
+        (MOSTRAR_VERIFICACION_ARCHIVO
+          ? '<p class="hint" style="margin-top:14px">También puedes arrastrar el PDF abajo para buscarlo por su huella digital.</p>'
+          : '');
     }
 
     function showError(msg) {
@@ -349,16 +361,21 @@
       }
     });
 
-    var drop = document.getElementById('drop');
-    var fileInput = document.getElementById('fileInput');
-    drop.addEventListener('click', function () { fileInput.click(); });
-    fileInput.addEventListener('change', function (e) { if (e.target.files[0]) handleFile(e.target.files[0]); });
-    drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('over'); });
-    drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
-    drop.addEventListener('drop', function (e) {
-      e.preventDefault(); drop.classList.remove('over');
-      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-    });
+    var filecheck = document.getElementById('filecheck');
+    if (!MOSTRAR_VERIFICACION_ARCHIVO) {
+      if (filecheck) filecheck.remove();
+    } else {
+      var drop = document.getElementById('drop');
+      var fileInput = document.getElementById('fileInput');
+      drop.addEventListener('click', function () { fileInput.click(); });
+      fileInput.addEventListener('change', function (e) { if (e.target.files[0]) handleFile(e.target.files[0]); });
+      drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('over'); });
+      drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
+      drop.addEventListener('drop', function (e) {
+        e.preventDefault(); drop.classList.remove('over');
+        if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+      });
+    }
 
     (function () {
       var params = new URLSearchParams(window.location.search);
