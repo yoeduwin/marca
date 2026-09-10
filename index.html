@@ -139,6 +139,7 @@
     .field-row > small { display: block; font-size: 0.73rem; color: #777; margin-top: 4px; }
     /* La fecha que quedará impresa, en texto, por encima de la nota explicativa. */
     #fechaEmisionLarga { color: #005600; font-weight: 600; }
+    #fechaEmisionLarga.aviso { color: #b8860b; }
     .field-row > label {
       display: block; color: #333; font-weight: 600;
       margin-bottom: 5px; font-size: 0.83rem;
@@ -1585,11 +1586,24 @@ function renderFechaEmisionLarga() {
   if (!el) return;
   var valor = document.getElementById('fechaEmision').value;
   var larga = fechaLarga(valor);
-  if (!valor) { el.textContent = 'Indica la fecha que lleva el informe.'; return; }
-  if (!larga) { el.textContent = 'Fecha no válida.'; return; }
-  el.textContent = valor > hoyISO()
-    ? 'Se imprimiría «' + larga + '», que aún no ha ocurrido.'
-    : 'Se imprimirá «' + larga + '».';
+  var hoy = hoyISO();
+  el.classList.remove('aviso');
+  if (!valor) { el.textContent = 'Indica la fecha que lleva el informe.'; el.classList.add('aviso'); return; }
+  if (!larga) { el.textContent = 'Fecha no válida.'; el.classList.add('aviso'); return; }
+  if (valor > hoy) {
+    el.textContent = 'Se imprimiría «' + larga + '», que aún no ha ocurrido.';
+    el.classList.add('aviso');
+    return;
+  }
+  // El campo conserva su valor entre documentos, lo que ayuda al emitir un
+  // lote de la misma fecha pero también permitiría arrastrar una fecha vieja
+  // sin notarlo. Cuando no es hoy, se dice.
+  if (valor < hoy) {
+    el.textContent = 'Se imprimirá «' + larga + '» — no es la fecha de hoy.';
+    el.classList.add('aviso');
+    return;
+  }
+  el.textContent = 'Se imprimirá «' + larga + '».';
 }
 
 // Fecha de hoy en el huso del navegador, en formato YYYY-MM-DD.
