@@ -187,6 +187,10 @@
       if (!slot || !publicId || !supa) return;
       try {
         var res = await supa.rpc('obtener_acceso_documento', { p_public_id: publicId });
+        // La consulta es asíncrona. Si mientras respondía se buscó otro folio,
+        // este resultado ya salió de la pantalla: no debe escribir sobre el
+        // aviso del resultado nuevo, que sí necesita la reserva completa.
+        if (!slot.isConnected) return;
         if (res.error) throw res.error;
         var rows = Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []);
         if (!rows.length || !rows[0].url) return;
