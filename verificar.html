@@ -78,6 +78,14 @@
     .drop:hover, .drop.over { border-color: #00a043; background: #f0faf3; }
     .drop b { color: #005600; }
     .hint { font-size: .75rem; color: #90a094; margin-top: 6px; }
+    /* Aviso al pie de una verificación: el informe no se publica aquí. */
+    .aviso {
+      margin-top: 16px; padding: 13px 15px; border-radius: 10px;
+      background: #fbfaf5; border: 1px solid #e9e0c8; border-left: 3px solid #b48e2e;
+    }
+    .aviso p { font-size: .78rem; color: #6a6250; line-height: 1.55; }
+    .aviso p + p { margin-top: 9px; }
+    .aviso b { color: #4a4535; }
     .foot { text-align: center; font-size: .72rem; color: #7d8c80; margin-top: 22px; line-height: 1.7; }
     .foot a { color: #005600; text-decoration: none; }
     .spinner {
@@ -131,6 +139,17 @@
     // concluyente para un QR histórico, que sólo identifica el folio.
     var MOSTRAR_VERIFICACION_ARCHIVO = false;
 
+    // Aviso al pie de una verificación exitosa. El informe digital no se publica
+    // en esta página: se consulta con el QR personalizado de su hoja membretada,
+    // que identifica la revisión exacta, o directamente con la empresa.
+    var AVISO_INFORME =
+      'Esta página confirma la autenticidad del folio, no publica el informe. ' +
+      'Para consultar el <b>informe digital</b>, comuníquese con Ejecutiva Ambiental ' +
+      'o utilice el <b>QR personalizado</b> entregado en la hoja membretada del documento.';
+    var AVISO_AUTORIDAD =
+      '<b>Autoridades:</b> si requiere validar este documento o acceder a su contenido, ' +
+      'comuníquese con nosotros al <b>222 941 7295</b>.';
+
     var supa = null;
     try { supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
     catch (e) { console.error('Supabase no disponible', e); }
@@ -176,9 +195,20 @@
             '<a class="btn" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">Ver informe</a>' +
             (r.norma ? '<p class="norma">' + esc(r.norma) + '</p>' : '') +
           '</div>';
+        var aviso = document.getElementById('avisoConsulta');
+        if (aviso) aviso.innerHTML = avisoHtml(true);
       } catch (e) {
         console.warn('Acceso al informe no disponible:', e);
       }
+    }
+
+    // Con el informe ya disponible en pantalla la primera línea sobra: queda
+    // sólo la vía para autoridades.
+    function avisoHtml(conAccesoDirecto) {
+      return '<div class="aviso">' +
+        (conAccesoDirecto ? '' : '<p>' + AVISO_INFORME + '</p>') +
+        '<p>' + AVISO_AUTORIDAD + '</p>' +
+      '</div>';
     }
 
     function showAuthentic(rows, exactPublicId) {
@@ -199,6 +229,7 @@
           extra +
         '</div>' +
         (exactPublicId ? '<div id="documentAccess"></div>' : '') +
+        '<div id="avisoConsulta">' + avisoHtml(false) + '</div>' +
         (MOSTRAR_VERIFICACION_ARCHIVO
           ? '<p class="hint" style="margin-top:14px">Para máxima certeza, arrastra abajo el PDF que recibiste y confirmaremos que no fue alterado.</p>'
           : '');
