@@ -86,6 +86,7 @@
     .aviso p { font-size: .78rem; color: #6a6250; line-height: 1.55; }
     .aviso p + p { margin-top: 9px; }
     .aviso b { color: #4a4535; }
+    .aviso a { color: #005600; font-weight: 600; overflow-wrap: break-word; }
     .foot { text-align: center; font-size: .72rem; color: #7d8c80; margin-top: 22px; line-height: 1.7; }
     .foot a { color: #005600; text-decoration: none; }
     .spinner {
@@ -143,12 +144,13 @@
     // en esta página: se consulta con el QR personalizado de su hoja membretada,
     // que identifica la revisión exacta, o directamente con la empresa.
     var AVISO_INFORME =
-      'Esta página confirma la autenticidad del folio, no publica el informe. ' +
-      'Para consultar el <b>informe digital</b>, comuníquese con Ejecutiva Ambiental ' +
-      'o utilice el <b>QR personalizado</b> entregado en la hoja membretada del documento.';
+      'El <b>contenido del informe es confidencial</b>: corresponde a quien contrató el ' +
+      'servicio y por eso no se publica en esta consulta. Para consultarlo, utilice el ' +
+      'QR impreso en el propio documento o solicítelo a Ejecutiva Ambiental.';
     var AVISO_AUTORIDAD =
-      '<b>Autoridades:</b> si requiere validar este documento o acceder a su contenido, ' +
-      'comuníquese con nosotros al <b>222 941 7295</b>.';
+      '<b>Autoridades:</b> este folio puede validarse en esta página. Para requerir ' +
+      'información sujeta a confidencialidad, comuníquese al <b>222 941 7295</b> o a ' +
+      '<a href="mailto:direccion.general@ejecutivambiental.com">direccion.general@<wbr>ejecutivambiental.com</a>.';
 
     var supa = null;
     try { supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
@@ -206,6 +208,8 @@
     // sólo la vía para autoridades.
     function avisoHtml(conAccesoDirecto) {
       return '<div class="aviso">' +
+        '<p>Esta página acredita la <b>autenticidad y vigencia</b> de este folio ante ' +
+        'cualquier persona que lo consulte.</p>' +
         (conAccesoDirecto ? '' : '<p>' + AVISO_INFORME + '</p>') +
         '<p>' + AVISO_AUTORIDAD + '</p>' +
       '</div>';
