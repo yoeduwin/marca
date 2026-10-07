@@ -614,7 +614,7 @@
         <label class="toggle-row" for="flattenDoc">
           <div>
             <span class="toggle-label">Aplanar documento (rasterizar con pdf.js)</span>
-            <small>Fusiona la marca de agua con el contenido y bloquea el archivo (sólo permite imprimir)</small>
+            <small>Fusiona la marca de agua con el contenido y marca el archivo como sólo imprimible (lo respetan Acrobat y la mayoría de visores)</small>
           </div>
           <input type="checkbox" id="flattenDoc" />
         </label>
@@ -655,7 +655,9 @@
     <div id="aplanarPanel" class="aplanar-panel hidden">
       <div class="aplanar-info">
         🖨️ <b>Modo aplanado</b> — cada PDF se convierte en imágenes, como si lo hubieras escaneado.
-        Queda bloqueado: no se puede editar ni copiar, ni convertir en editable con OCR; sólo imprimir.
+        Además se bloquea con permisos de sólo impresión: Acrobat y los visores que respetan
+        permisos no dejan editarlo, copiarlo ni pasarle OCR. Es un freno, no una garantía:
+        un programa que ignore los permisos, o una reimpresión, puede reconocer el texto.
         Sin marca de agua ni numeración.
       </div>
       <div class="field-row">
@@ -1786,8 +1788,10 @@ async function flattenPDF(pdfBytes, opts) {
 // ("Editar PDF") y los conversores a Word le pasan OCR automáticamente y la
 // vuelven texto editable. Cifrar con una contraseña de propietario aleatoria
 // (que nadie conoce) y SIN contraseña de apertura hace que el archivo se abra
-// normal, pero que los visores nieguen editarlo, copiarlo o reconocer texto.
-// Sólo se permite imprimir (en alta calidad).
+// normal, pero que los visores que respetan permisos (Acrobat incluido)
+// nieguen editarlo, copiarlo o reconocer texto. Sólo se permite imprimir.
+// /P es una restricción que aplica el visor, no criptográfica: un conversor
+// que la ignore, o imprimir a un PDF nuevo, sigue pudiendo pasarle OCR.
 var PDF_PERMISOS_SOLO_IMPRIMIR = -1852; // bits 3 y 12 + reservados (ISO 32000-2, tabla 22)
 
 function randomBytes(n) {
