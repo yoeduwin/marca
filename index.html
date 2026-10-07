@@ -614,7 +614,7 @@
         <label class="toggle-row" for="flattenDoc">
           <div>
             <span class="toggle-label">Aplanar documento (rasterizar con pdf.js)</span>
-            <small>Fusiona la marca de agua con el contenido; impide cualquier edición</small>
+            <small>Fusiona la marca de agua con el contenido y bloquea el archivo (sólo permite imprimir)</small>
           </div>
           <input type="checkbox" id="flattenDoc" />
         </label>
@@ -655,7 +655,8 @@
     <div id="aplanarPanel" class="aplanar-panel hidden">
       <div class="aplanar-info">
         🖨️ <b>Modo aplanado</b> — cada PDF se convierte en imágenes, como si lo hubieras escaneado.
-        No se puede editar, ni copiar el texto. Sin marca de agua ni numeración.
+        Queda bloqueado: no se puede editar ni copiar, ni convertir en editable con OCR; sólo imprimir.
+        Sin marca de agua ni numeración.
       </div>
       <div class="field-row">
         <label for="aplanarQuality">Calidad (opcional)</label>
@@ -1779,6 +1780,138 @@ async function flattenPDF(pdfBytes, opts) {
 }
 
 // =========================================================================
+// BLOQUEO ANTI-EDICIÓN — cifrado AES-256 (PDF 2.0, R6) con permisos
+// =========================================================================
+// Aplanar deja cada página como una sola imagen, pero eso no basta: Acrobat
+// ("Editar PDF") y los conversores a Word le pasan OCR automáticamente y la
+// vuelven texto editable. Cifrar con una contraseña de propietario aleatoria
+// (que nadie conoce) y SIN contraseña de apertura hace que el archivo se abra
+// normal, pero que los visores nieguen editarlo, copiarlo o reconocer texto.
+// Sólo se permite imprimir (en alta calidad).
+var PDF_PERMISOS_SOLO_IMPRIMIR = -1852; // bits 3 y 12 + reservados (ISO 32000-2, tabla 22)
+
+function randomBytes(n) {
+  var b = new Uint8Array(n);
+  crypto.getRandomValues(b);
+  return b;
+}
+
+function concatBytes() {
+  var total = 0, i;
+  for (i = 0; i < arguments.length; i++) total += arguments[i].length;
+  var out = new Uint8Array(total), off = 0;
+  for (i = 0; i < arguments.length; i++) { out.set(arguments[i], off); off += arguments[i].length; }
+  return out;
+}
+
+function bytesToHex(bytes) {
+  var s = '';
+  for (var i = 0; i < bytes.length; i++) s += (bytes[i] < 16 ? '0' : '') + bytes[i].toString(16);
+  return s;
+}
+
+// AES-CBC sin relleno: WebCrypto siempre agrega un bloque PKCS#7 completo
+// cuando la entrada es múltiplo de 16; basta con descartarlo.
+async function aesCbcSinRelleno(keyBytes, iv, data) {
+  var key = await crypto.subtle.importKey('raw', keyBytes, 'AES-CBC', false, ['encrypt']);
+  var out = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv }, key, data));
+  return out.subarray(0, data.length);
+}
+
+// Algoritmo 2.B de ISO 32000-2 (hash de contraseña para R6).
+async function pdfHashR6(password, salt, udata) {
+  var k = new Uint8Array(await crypto.subtle.digest('SHA-256', concatBytes(password, salt, udata)));
+  var e = null, ronda = 0;
+  while (ronda < 64 || e[e.length - 1] > ronda - 32) {
+    var seq = concatBytes(password, k, udata);
+    var k1 = new Uint8Array(seq.length * 64);
+    for (var j = 0; j < 64; j++) k1.set(seq, j * seq.length);
+    e = await aesCbcSinRelleno(k.subarray(0, 16), k.subarray(16, 32), k1);
+    var suma = 0;
+    for (var s = 0; s < 16; s++) suma += e[s];
+    k = new Uint8Array(await crypto.subtle.digest(['SHA-256', 'SHA-384', 'SHA-512'][suma % 3], e));
+    ronda++;
+  }
+  return k.subarray(0, 32);
+}
+
+// Cifra en sitio todas las cadenas y flujos de un documento pdf-lib y le
+// agrega el diccionario /Encrypt. Debe llamarse justo antes de guardar, y el
+// documento debe guardarse con useObjectStreams: false.
+async function lockPdfDocument(doc) {
+  var ctx = doc.context;
+  await doc.flush(); // las imágenes se escriben al contexto hasta aquí
+
+  var fileKey = randomBytes(32);
+  var cryptoKey = await crypto.subtle.importKey('raw', fileKey, 'AES-CBC', false, ['encrypt']);
+  async function cifrar(data) {
+    var iv = randomBytes(16);
+    var ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv }, cryptoKey, data));
+    return concatBytes(iv, ct);
+  }
+  async function cifrarValor(obj) {
+    if (obj instanceof PDFLib.PDFString || obj instanceof PDFLib.PDFHexString) {
+      return PDFLib.PDFHexString.of(bytesToHex(await cifrar(obj.asBytes())));
+    }
+    if (obj instanceof PDFLib.PDFArray) {
+      for (var i = 0; i < obj.size(); i++) obj.set(i, await cifrarValor(obj.get(i)));
+    } else if (obj instanceof PDFLib.PDFDict) {
+      var entries = obj.entries();
+      for (var j = 0; j < entries.length; j++) obj.set(entries[j][0], await cifrarValor(entries[j][1]));
+    }
+    return obj;
+  }
+
+  var objetos = ctx.enumerateIndirectObjects();
+  for (var n = 0; n < objetos.length; n++) {
+    var ref = objetos[n][0], obj = objetos[n][1];
+    if (obj instanceof PDFLib.PDFStream) {
+      var contenido = obj.getContents(); // ya codificado (Flate/DCT)
+      await cifrarValor(obj.dict);
+      ctx.assign(ref, PDFLib.PDFRawStream.of(obj.dict, await cifrar(contenido)));
+    } else {
+      ctx.assign(ref, await cifrarValor(obj));
+    }
+  }
+
+  // Contraseña de usuario vacía (abre sin pedir nada); la de propietario es
+  // aleatoria y se descarta, así que los permisos no se pueden levantar.
+  var userPwd = new Uint8Array(0);
+  var ownerPwd = new TextEncoder().encode(bytesToHex(randomBytes(32)));
+  var zeroIv = new Uint8Array(16);
+
+  var uVal = randomBytes(8), uKey = randomBytes(8);
+  var U = concatBytes(await pdfHashR6(userPwd, uVal, new Uint8Array(0)), uVal, uKey);
+  var UE = await aesCbcSinRelleno(await pdfHashR6(userPwd, uKey, new Uint8Array(0)), zeroIv, fileKey);
+
+  var oVal = randomBytes(8), oKey = randomBytes(8);
+  var O = concatBytes(await pdfHashR6(ownerPwd, oVal, U), oVal, oKey);
+  var OE = await aesCbcSinRelleno(await pdfHashR6(ownerPwd, oKey, U), zeroIv, fileKey);
+
+  var p = PDF_PERMISOS_SOLO_IMPRIMIR >>> 0;
+  var permsPlain = concatBytes(
+    new Uint8Array([p & 0xff, (p >>> 8) & 0xff, (p >>> 16) & 0xff, (p >>> 24) & 0xff, 0xff, 0xff, 0xff, 0xff]),
+    new TextEncoder().encode('Tadb'), randomBytes(4));
+  var Perms = await aesCbcSinRelleno(fileKey, zeroIv, permsPlain); // un bloque = ECB
+
+  function hex(b) { return PDFLib.PDFHexString.of(bytesToHex(b)); }
+  ctx.trailerInfo.Encrypt = ctx.register(ctx.obj({
+    Filter: 'Standard', V: 5, R: 6, Length: 256,
+    CF: { StdCF: { AuthEvent: 'DocOpen', CFM: 'AESV3', Length: 32 } },
+    StmF: 'StdCF', StrF: 'StdCF',
+    O: hex(O), U: hex(U), OE: hex(OE), UE: hex(UE), Perms: hex(Perms),
+    P: PDF_PERMISOS_SOLO_IMPRIMIR, EncryptMetadata: true
+  }));
+  var fileId = bytesToHex(randomBytes(16));
+  ctx.trailerInfo.ID = ctx.obj([PDFLib.PDFHexString.of(fileId), PDFLib.PDFHexString.of(fileId)]);
+}
+
+async function saveLockedPdf(doc) {
+  await lockPdfDocument(doc);
+  return doc.save({ useObjectStreams: false, addDefaultPage: false, updateFieldAppearances: false });
+}
+
+// =========================================================================
 // CERTIFICATION PAGE BUILDER
 // =========================================================================
 async function buildCertificationPage(certPage, pdfDoc, opts) {
@@ -2074,7 +2207,9 @@ async function processSinglePDF(file, opts) {
   finalPdfDoc.setCreationDate(creationDate);
   finalPdfDoc.setModificationDate(creationDate);
 
-  var out = await finalPdfDoc.save();
+  // Un PDF aplanado sale además bloqueado: sin esto, Acrobat le pasa OCR a
+  // las imágenes y lo vuelve editable.
+  var out = shouldFlatten ? await saveLockedPdf(finalPdfDoc) : await finalPdfDoc.save();
   var blob = new Blob([out], { type: 'application/pdf' });
   var url = URL.createObjectURL(blob);
   state.blobURLs.push(url);
