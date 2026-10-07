@@ -1845,6 +1845,10 @@ async function pdfHashR6(password, salt, udata) {
 async function lockPdfDocument(doc) {
   var ctx = doc.context;
   await doc.flush(); // las imágenes se escriben al contexto hasta aquí
+  // pdf-lib escribe cabecera 1.7; AES-256 (R6) es la extensión 8 de Adobe
+  // sobre 1.7, y el catálogo debe declararla para los lectores estrictos.
+  doc.catalog.set(PDFLib.PDFName.of('Extensions'),
+    ctx.obj({ ADBE: { BaseVersion: '1.7', ExtensionLevel: 8 } }));
 
   var fileKey = randomBytes(32);
   var cryptoKey = await crypto.subtle.importKey('raw', fileKey, 'AES-CBC', false, ['encrypt']);
